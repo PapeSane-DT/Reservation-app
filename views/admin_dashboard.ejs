@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Admin</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f4f4f4; }
+        header { background: #2c3e50; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        header a { color: white; text-decoration: none; font-size: 14px; }
+        main { padding: 30px; max-width: 900px; margin: 0 auto; }
+        h2 { color: #2c3e50; margin-top: 40px; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+        th { background: #ecf0f1; }
+        .statut { padding: 3px 8px; border-radius: 4px; font-size: 12px; color: white; }
+        .en_attente { background: #f39c12; }
+        .confirme { background: #27ae60; }
+        .annule { background: #e74c3c; }
+        select { padding: 4px; }
+        .btn-add { display: inline-block; margin-top: 15px; padding: 8px 16px; background: #27ae60; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <header>
+        <strong>Dashboard Admin</strong>
+        <div>
+            <span><%= email %></span> &nbsp;|&nbsp;
+            <a href="/admin/logout">Déconnexion</a>
+        </div>
+    </header>
+    <main>
+        <h2>Services (<%= services.length %>)</h2>
+        <table>
+            <tr><th>Nom</th><th>Prix</th><th>Description</th></tr>
+            <% services.forEach(function(s) { %>
+                <tr>
+                    <td><%= s.nom %></td>
+                    <td><%= s.prix %> FCFA</td>
+                    <td><%= s.description %></td>
+                </tr>
+            <% }); %>
+        </table>
+        <a class="btn-add" href="/admin/services/nouveau">+ Ajouter un service</a>
+
+        <h2>Réservations (<%= reservations.length %>)</h2>
+        <table>
+            <tr><th>Service</th><th>Utilisateur</th><th>Date</th><th>Statut</th><th>Action</th></tr>
+            <% reservations.forEach(function(r) { %>
+                <tr>
+                    <td><%= r.service_nom %></td>
+                    <td><%= r.utilisateur_id %></td>
+                    <td><%= r.date_reservation.toISOString().split('T')[0] %></td>
+                    <td><span class="statut <%= r.statut %>"><%= r.statut %></span></td>
+                    <td>
+                        <form action="/admin/reservations/<%= r.id %>/statut" method="POST" style="display:inline;">
+                            <select name="statut" onchange="this.form.submit()">
+                                <option value="en_attente" <%= r.statut === 'en_attente' ? 'selected' : '' %>>En attente</option>
+                                <option value="confirme" <%= r.statut === 'confirme' ? 'selected' : '' %>>Confirmé</option>
+                                <option value="annule" <%= r.statut === 'annule' ? 'selected' : '' %>>Annulé</option>
+                            </select>
+                        </form>
+                    </td>
+                </tr>
+            <% }); %>
+        </table>
+    </main>
+</body>
+</html>

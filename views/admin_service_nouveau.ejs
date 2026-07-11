@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ajouter un service</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f4f4f4; }
+        form { background: white; padding: 20px; border-radius: 8px; max-width: 400px; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input, textarea { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        button { margin-top: 15px; padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Ajouter un service</h1>
+    <form action="/admin/services/nouveau" method="POST">
+        <label>Nom du service</label>
+        <input type="text" name="nom" required>
+
+        <label>Description</label>
+        <textarea name="description" rows="3"></textarea>
+
+        <label>Prix (FCFA)</label>
+        <input type="number" name="prix" required>
+	<label>Durée (minutes)</label>
+<input type="number" name="duree_minutes" value="60" required>
+        <button type="submit">Ajouter</button>
+    </form>
+    <p><a href="/admin/dashboard">← Retour au dashboard</a></p>
+</body>
+</html>

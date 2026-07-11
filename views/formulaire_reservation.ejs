@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Réserver — <%= service.nom %></title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --indigo: #1B2A4A;
+        --indigo-light: #2C4270;
+        --gold: #B8934A;
+        --ivoire: #FAF8F3;
+        --ardoise: #2A2A2A;
+        --gris: #6B7280;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        background: var(--ivoire);
+        color: var(--ardoise);
+        min-height: 100vh;
+    }
+    header {
+        background: var(--indigo);
+        color: white;
+        padding: 40px 24px 48px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    header::before {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 32px;
+        background-image: repeating-linear-gradient(90deg, var(--gold) 0 2px, transparent 2px 18px);
+        opacity: 0.35;
+    }
+    header .eyebrow {
+        font-size: 13px;
+        color: var(--gold);
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+    header h1 {
+        font-family: 'Fraunces', serif;
+        font-weight: 600;
+        font-size: clamp(24px, 4.5vw, 34px);
+        margin: 0;
+    }
+    main {
+        max-width: 480px;
+        margin: -24px auto 60px;
+        padding: 0 24px;
+    }
+    .recap {
+        background: white;
+        border-radius: 4px;
+        padding: 22px 26px;
+        margin-bottom: 20px;
+        box-shadow: 0 8px 24px rgba(27,42,74,0.08);
+        border-left: 3px solid var(--gold);
+    }
+    .recap p {
+        margin: 0;
+        color: var(--gris);
+        font-size: 14.5px;
+        line-height: 1.5;
+    }
+    .recap .prix {
+        font-family: 'Fraunces', serif;
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--indigo);
+        margin-top: 8px;
+    }
+    form {
+        background: white;
+        border-radius: 4px;
+        padding: 28px 26px;
+        box-shadow: 0 8px 24px rgba(27,42,74,0.08);
+    }
+    label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--indigo);
+        margin-top: 18px;
+        margin-bottom: 6px;
+        letter-spacing: 0.01em;
+    }
+    label:first-of-type { margin-top: 0; }
+    input {
+        width: 100%;
+        padding: 11px 13px;
+        border: 1px solid #E2E1DA;
+        border-radius: 3px;
+        font-family: 'Inter', sans-serif;
+        font-size: 15px;
+        background: var(--ivoire);
+    }
+    input:focus {
+        outline: none;
+        border-color: var(--gold);
+        background: white;
+    }
+    button {
+        margin-top: 26px;
+        width: 100%;
+        padding: 13px;
+        background: var(--indigo);
+        color: white;
+        border: none;
+        border-radius: 3px;
+        font-size: 15px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+    button:hover { background: var(--indigo-light); }
+    .retour {
+        display: block;
+        text-align: center;
+        margin-top: 18px;
+        color: var(--gris);
+        text-decoration: none;
+        font-size: 14px;
+    }
+    .retour:hover { color: var(--indigo); }
+</style>
+</head>
+<body>
+    <header>
+        <div class="eyebrow">Réservation</div>
+        <h1><%= service.nom %></h1>
+    </header>
+    <main>
+        <div class="recap">
+            <p><%= service.description %></p>
+            <div class="prix"><%= Number(service.prix).toLocaleString('fr-FR') %> FCFA · <%= service.duree_minutes %> min</div>
+        </div>
+
+        <form action="/reserver/confirmer" method="POST">
+            <input type="hidden" name="service_id" value="<%= service.id %>">
+
+            <label for="utilisateur_id">Votre identifiant</label>
+            <input type="number" name="utilisateur_id" required>
+
+            <label for="date_reservation">Date souhaitée</label>
+            <input type="date" name="date_reservation" required>
+
+            <button type="submit">Confirmer la réservation</button>
+        </form>
+        <a class="retour" href="/catalogue">← Retour au catalogue</a>
+    </main>
+</body>
+</html>

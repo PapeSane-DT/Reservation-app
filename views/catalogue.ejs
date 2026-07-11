@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Réserver une consultation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --indigo: #1B2A4A;
+        --indigo-light: #2C4270;
+        --gold: #B8934A;
+        --ivoire: #FAF8F3;
+        --ardoise: #2A2A2A;
+        --gris: #6B7280;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        background: var(--ivoire);
+        color: var(--ardoise);
+    }
+    header {
+        background: var(--indigo);
+        color: white;
+        padding: 56px 24px 64px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    header::before {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 40px;
+        background-image: repeating-linear-gradient(90deg, var(--gold) 0 2px, transparent 2px 18px);
+        opacity: 0.35;
+    }
+    header h1 {
+        font-family: 'Fraunces', serif;
+        font-weight: 600;
+        font-size: clamp(28px, 5vw, 42px);
+        margin: 0 0 12px;
+    }
+    header p {
+        margin: 0;
+        color: #C9D3E8;
+        font-size: 16px;
+        max-width: 480px;
+        margin: 0 auto;
+    }
+    main {
+        max-width: 760px;
+        margin: -32px auto 60px;
+        padding: 0 24px;
+    }
+    .service {
+        background: white;
+        border-radius: 4px;
+        padding: 28px 30px;
+        margin-bottom: 18px;
+        box-shadow: 0 8px 24px rgba(27,42,74,0.08);
+        border-left: 3px solid var(--gold);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    .service-info h2 {
+        font-family: 'Fraunces', serif;
+        font-size: 21px;
+        font-weight: 600;
+        margin: 0 0 8px;
+        color: var(--indigo);
+    }
+    .service-info p {
+        margin: 0 0 12px;
+        color: var(--gris);
+        font-size: 14.5px;
+        line-height: 1.5;
+        max-width: 400px;
+    }
+    .meta {
+        display: flex;
+        gap: 14px;
+        font-size: 13px;
+        color: var(--gold);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+    .meta span { display: flex; align-items: center; gap: 5px; }
+    .prix {
+        font-family: 'Fraunces', serif;
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--indigo);
+        white-space: nowrap;
+    }
+    .btn {
+        display: inline-block;
+        margin-top: 14px;
+        padding: 10px 22px;
+        background: var(--indigo);
+        color: white;
+        text-decoration: none;
+        border-radius: 3px;
+        font-size: 14px;
+        font-weight: 500;
+        transition: background 0.2s ease;
+    }
+    .btn:hover { background: var(--indigo-light); }
+    .col-right { text-align: right; }
+    footer {
+        text-align: center;
+        padding: 20px;
+        font-size: 13px;
+        color: var(--gris);
+    }
+    @media (max-width: 480px) {
+        .service { flex-direction: column; align-items: flex-start; }
+        .col-right { text-align: left; width: 100%; }
+    }
+</style>
+</head>
+<body>
+    <header>
+        <h1>Réservez votre créneau</h1>
+        <p>Un accompagnement sur mesure, à l'heure qui vous convient.</p>
+    </header>
+    <main>
+        <% services.forEach(function(service) { %>
+            <div class="service">
+                <div class="service-info">
+                    <h2><%= service.nom %></h2>
+                    <p><%= service.description %></p>
+                    <div class="meta">
+                        <span>⏱ <%= service.duree_minutes %> min</span>
+                    </div>
+                </div>
+                <div class="col-right">
+                    <div class="prix"><%= Number(service.prix).toLocaleString('fr-FR') %> FCFA</div>
+                    <a class="btn" href="/reserver/<%= service.id %>">Réserver →</a>
+                </div>
+            </div>
+        <% }); %>
+    </main>
+    <footer>Confirmation sous 24h après votre demande.</footer>
+</body>
+</html>
