@@ -1,3 +1,4 @@
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 const bcrypt = require('bcrypt');
 const session = require('express-session');
@@ -31,6 +32,13 @@ const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10
 });
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+    }
+});
 
 // ROUTE 1 : Afficher le catalogue complet des services
 app.get('/catalogue', async (req, res) => {
@@ -58,7 +66,7 @@ app.get('/reserver/:id', async (req, res) => {
 
 // ROUTE 3 : Traitement et validation sécurisée du créneau
 app.post('/reserver/confirmer', async (req, res) => {
-    const { service_id, utilisateur_id, date_reservation } = req.body;
+    const { service_id, utilisateur_id, email, date_reservation } = req.body;
     try {
         const [dejaPris] = await pool.query(
             "SELECT * FROM reservations WHERE service_id = ? AND date_reservation = ? AND statut != 'annule'",
@@ -69,10 +77,23 @@ app.post('/reserver/confirmer', async (req, res) => {
         }
 
         await pool.query(
-            "INSERT INTO reservations (utilisateur_id, service_id, date_reservation, statut) VALUES (?, ?, ?, 'en_attente')",
-            [utilisateur_id, service_id, date_reservation]
+            "INSERT INTO reservations (utilisateur_id, email, service_id, date_reservation, statut) VALUES (?, ?, ?, ?, 'en_attente')",
+            [utilisateur_id, email, service_id, date_reservation]
         );
-        res.send("<h3>Votre réservation a bien été enregistrée avec succès !</h3><a href='/catalogue'>Retour au catalogue</a>");
+
+        const [serviceRows] = await pool.query('SELECT nom FROM services WHERE id = ?', [service_id]);
+        const nomService = serviceRows[0]?.nom || 'votre service';
+
+        transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Votre demande de réservation a été reçue',
+            html: `<p>Bonjour,</p>
+                   <p>Votre demande de réservation pour <strong>${nomService}</strong> le <strong>${date_reservation}</strong> a bien été reçue.</p>
+                   <p>Vous recevrez un email dès que votre créneau sera confirmé.</p>`
+        }).catch(err => console.error('Erreur envoi email:', err));
+
+        res.send("<h3>Votre réservation a bien été enregistrée avec succès ! Vous recevrez un email de confirmation.</h3><a href='/catalogue'>Retour au catalogue</a>");
     } catch (error) {
         console.error(error);
         res.status(500).send("Erreur lors de l'enregistrement de la réservation.");
@@ -152,19 +173,48 @@ app.post('/admin/services/nouveau', requireAuth, async (req, res) => {
         res.status(500).send("Erreur lors de l'ajout du service");
     }
 });
-
 // Changer le statut d'une réservation
 app.post('/admin/reservations/:id/statut', requireAuth, async (req, res) => {
     const { id } = req.params;
     const { statut } = req.body;
     try {
         await pool.query('UPDATE reservations SET statut = ? WHERE id = ?', [statut, id]);
+
+        const [rows] = await pool.query(
+            `SELECT reservations.email, reservations.date_reservation, services.nom AS service_nom
+             FROM reservations JOIN services ON reservations.service_id = services.id
+             WHERE reservations.id = ?`,
+            [id]
+        );
+
+        if (rows.length > 0 && rows[0].email) {
+            const { email, date_reservation, service_nom } = rows[0];
+            let sujet, message;
+
+            if (statut === 'confirme') {
+                sujet = 'Votre réservation est confirmée ✅';
+                message = `<p>Bonne nouvelle ! Votre réservation pour <strong>${service_nom}</strong> le <strong>${date_reservation}</strong> est confirmée.</p>`;
+            } else if (statut === 'annule') {
+                sujet = 'Votre réservation a été annulée';
+                message = `<p>Votre réservation pour <strong>${service_nom}</strong> le <strong>${date_reservation}</strong> a été annulée. N'hésitez pas à choisir un autre créneau.</p>`;
+            } else {
+                sujet = 'Mise à jour de votre réservation';
+                message = `<p>Le statut de votre réservation pour <strong>${service_nom}</strong> a été mis à jour : ${statut}.</p>`;
+            }
+
+            transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: sujet,
+                html: message
+            }).catch(err => console.error('Erreur envoi email:', err));
+        }
+
         res.redirect('/admin/dashboard');
     } catch (error) {
         console.error(error);
         res.status(500).send('Erreur lors de la mise à jour du statut');
     }
 });
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Serveur actif et prêt : http://localhost:${PORT}/catalogue`));
