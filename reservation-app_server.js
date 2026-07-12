@@ -33,13 +33,15 @@ const pool = mysql.createPool({
     connectionLimit: 10
 });
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD
-    }
+    },
+    family: 4
 });
-
 // ROUTE 1 : Afficher le catalogue complet des services
 app.get('/catalogue', async (req, res) => {
     try {
