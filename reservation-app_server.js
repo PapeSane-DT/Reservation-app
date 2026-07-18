@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 require('dotenv').config();
 const bcrypt = require('bcrypt');
 const session = require('express-session');
@@ -32,16 +32,9 @@ const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10
 });
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
-    },
-    family: 4
-});
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 // ROUTE 1 : Afficher le catalogue complet des services
 app.get('/catalogue', async (req, res) => {
     try {
@@ -86,8 +79,8 @@ app.post('/reserver/confirmer', async (req, res) => {
         const [serviceRows] = await pool.query('SELECT nom FROM services WHERE id = ?', [service_id]);
         const nomService = serviceRows[0]?.nom || 'votre service';
 
-        transporter.sendMail({
-            from: process.env.EMAIL_USER,
+        resend.emails.send({
+            from: 'onboarding@resend.dev',
             to: email,
             subject: 'Votre demande de réservation a été reçue',
             html: `<p>Bonjour,</p>
@@ -175,6 +168,7 @@ app.post('/admin/services/nouveau', requireAuth, async (req, res) => {
         res.status(500).send("Erreur lors de l'ajout du service");
     }
 });
+
 // Changer le statut d'une réservation
 app.post('/admin/reservations/:id/statut', requireAuth, async (req, res) => {
     const { id } = req.params;
@@ -204,8 +198,8 @@ app.post('/admin/reservations/:id/statut', requireAuth, async (req, res) => {
                 message = `<p>Le statut de votre réservation pour <strong>${service_nom}</strong> a été mis à jour : ${statut}.</p>`;
             }
 
-            transporter.sendMail({
-                from: process.env.EMAIL_USER,
+            resend.emails.send({
+                from: 'onboarding@resend.dev',
                 to: email,
                 subject: sujet,
                 html: message
@@ -218,5 +212,6 @@ app.post('/admin/reservations/:id/statut', requireAuth, async (req, res) => {
         res.status(500).send('Erreur lors de la mise à jour du statut');
     }
 });
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Serveur actif et prêt : http://localhost:${PORT}/catalogue`));
