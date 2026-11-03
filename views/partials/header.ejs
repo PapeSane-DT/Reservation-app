@@ -80,6 +80,11 @@
                 </div>
                 
                 <% if (typeof user !== 'undefined' && user) { %>
+                    <% if (user.role === 'admin') { %>
+                        <a href="/admin/dashboard" class="btn btn-outline btn-sm" style="background: rgba(14, 165, 233, 0.12); border-color: rgba(14, 165, 233, 0.4); color: #0284c7; font-weight: 700;">
+                            <i class="fa-solid fa-shield-halved"></i> Console Admin
+                        </a>
+                    <% } %>
                     <a href="/coach/dashboard" class="btn btn-secondary btn-sm">
                         <i class="fa-solid fa-chart-line"></i> Dashboard (<%= user.nom_complet || user.email %>)
                     </a>

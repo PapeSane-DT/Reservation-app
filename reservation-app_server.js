@@ -53,6 +53,27 @@ function requireAuth(req, res, next) {
     return res.redirect('/coach/connexion');
 }
 
+// Middleware d'authentification strict pour l'espace Administrateur
+function requireAdmin(req, res, next) {
+    if (req.session && req.session.userId && req.session.role === 'admin') {
+        return next();
+    }
+    if (req.session && req.session.userId) {
+        return res.status(403).send(`
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif, system-ui; max-width: 520px; margin: 80px auto; padding: 32px; border: 1px solid #e2e8f0; border-radius: 16px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.06); background: white;">
+                <div style="width: 56px; height: 56px; background: #fee2e2; color: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 16px;">⛔</div>
+                <h2 style="color: #1e293b; margin: 0 0 8px 0; font-size: 20px;">Accès Restreint</h2>
+                <p style="color: #64748b; font-size: 14.5px; line-height: 1.5; margin-bottom: 24px;">Cet espace est exclusivement réservé aux administrateurs de la plateforme CoachFlow.</p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <a href="/coach/dashboard" style="display: inline-block; padding: 10px 18px; background: #4361ee; color: white; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13.5px;">Mon Dashboard Coach</a>
+                    <a href="/catalogue" style="display: inline-block; padding: 10px 18px; background: #f1f5f9; color: #475569; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13.5px;">Retour Catalogue</a>
+                </div>
+            </div>
+        `);
+    }
+    return res.redirect('/coach/connexion?redirect=/admin/dashboard');
+}
+
 // Pool de connexion MySQL / MariaDB
 const pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
@@ -394,6 +415,9 @@ app.post('/coach/connexion', async (req, res) => {
         req.session.role = user.role || 'coach';
         req.session.expertise = user.expertise || 'Expert';
 
+        if (user.role === 'admin') {
+            return res.redirect('/admin/dashboard');
+        }
         res.redirect('/coach/dashboard');
     } catch (error) {
         console.error('Erreur connexion coach :', error);
@@ -410,8 +434,295 @@ app.get(['/coach/deconnexion', '/admin/logout'], (req, res) => {
 
 // Redirection rétrocompatible pour les anciennes URLs admin
 app.get('/admin/login', (req, res) => res.redirect('/coach/connexion'));
-app.get('/admin/dashboard', (req, res) => res.redirect('/coach/dashboard'));
 app.get('/admin/services/nouveau', (req, res) => res.redirect('/coach/services/nouveau'));
+
+// ==========================================
+// TABLEAU DE BORD ADMINISTRATEUR (SUPERVISION GLOBALE & RBAC)
+// ==========================================
+app.get('/admin/dashboard', requireAdmin, async (req, res) => {
+    try {
+        const adminId = req.session.userId;
+        const [adminRows] = await pool.query('SELECT * FROM users WHERE id = ?', [adminId]);
+        const adminUser = adminRows[0] || {
+            nom_complet: req.session.nom_complet,
+            email: req.session.email,
+            role: 'admin'
+        };
+
+        // 1. KPI & Statistiques en temps réel
+        const [[coachCountRow]] = await pool.query("SELECT COUNT(*) AS total FROM users WHERE role = 'coach'");
+        const [[adminCountRow]] = await pool.query("SELECT COUNT(*) AS total FROM users WHERE role = 'admin'");
+        const [[clientCountRow]] = await pool.query("SELECT COUNT(*) AS total FROM users WHERE role = 'client'");
+        const [[distinctResClientsRow]] = await pool.query("SELECT COUNT(DISTINCT email) AS total FROM reservations WHERE email IS NOT NULL AND email != ''");
+        
+        const totalClients = Math.max(Number(clientCountRow.total) + Number(distinctResClientsRow.total), Number(distinctResClientsRow.total));
+        const totalCoaches = Number(coachCountRow.total);
+        const totalAdmins = Number(adminCountRow.total);
+
+        // Abonnements coachs actifs (statut active et date future ou indéterminée)
+        const [[activeSubsRow]] = await pool.query(`
+            SELECT COUNT(*) AS total FROM users 
+            WHERE subscription_status = 'active' 
+              AND (subscription_expires_at IS NULL OR subscription_expires_at >= NOW())
+        `);
+        const activeSubscriptions = Number(activeSubsRow.total);
+
+        // Réservations globales & statuts
+        const [[resStatsRow]] = await pool.query(`
+            SELECT 
+                COUNT(*) AS total,
+                SUM(CASE WHEN statut = 'confirme' THEN 1 ELSE 0 END) AS confirmes,
+                SUM(CASE WHEN statut = 'en_attente' THEN 1 ELSE 0 END) AS en_attente,
+                SUM(CASE WHEN statut = 'annule' THEN 1 ELSE 0 END) AS annules
+            FROM reservations
+        `);
+        const totalReservations = Number(resStatsRow.total || 0);
+        const confirmedReservations = Number(resStatsRow.confirmes || 0);
+        const pendingReservations = Number(resStatsRow.en_attente || 0);
+        const cancelledReservations = Number(resStatsRow.annules || 0);
+        const confirmationRate = totalReservations > 0 ? Math.round((confirmedReservations / totalReservations) * 100) : 0;
+
+        // Revenus Prestations (somme des prix des réservations confirmées)
+        const [[prestationRevRow]] = await pool.query(`
+            SELECT COALESCE(SUM(s.prix), 0) AS total 
+            FROM reservations r 
+            JOIN services s ON r.service_id = s.id 
+            WHERE r.statut = 'confirme'
+        `);
+        const prestationRevenue = Number(prestationRevRow.total || 0);
+
+        // Revenus Abonnements Wave (somme des transactions 'completed')
+        const [[waveSubRevRow]] = await pool.query(`
+            SELECT COALESCE(SUM(amount), 0) AS total 
+            FROM wave_transactions 
+            WHERE status = 'completed'
+        `);
+        const subscriptionRevenue = Number(waveSubRevRow.total || 0);
+        const totalRevenue = prestationRevenue + subscriptionRevenue;
+
+        // 2. Récupération des données pour les sections/onglets
+        // A. Tous les Utilisateurs
+        const [users] = await pool.query(`
+            SELECT id, email, nom_complet, role, expertise, bio, telephone, 
+                   subscription_status, subscription_expires_at, created_at 
+            FROM users 
+            ORDER BY created_at DESC
+        `);
+
+        // B. Toutes les Réservations de la plateforme
+        const [reservations] = await pool.query(`
+            SELECT 
+                r.id, r.utilisateur_id, r.date_reservation, r.heure_reservation, r.statut, r.created_at,
+                r.prenom, r.nom, r.email, r.telephone,
+                s.nom AS service_nom, s.prix, s.duree_minutes, s.domaine,
+                u.id AS coach_id, u.nom_complet AS coach_nom, u.email AS coach_email
+            FROM reservations r
+            JOIN services s ON r.service_id = s.id
+            LEFT JOIN users u ON s.coach_id = u.id
+            ORDER BY r.created_at DESC
+        `);
+
+        // C. Abonnements Coachs & échéances
+        const [subscriptions] = await pool.query(`
+            SELECT id, nom_complet, email, telephone, expertise, subscription_status, subscription_expires_at, created_at,
+                   DATEDIFF(subscription_expires_at, NOW()) AS jours_restants
+            FROM users
+            WHERE role IN ('coach', 'admin')
+            ORDER BY subscription_expires_at DESC, created_at DESC
+        `);
+
+        // D. Paiements & Transactions Wave
+        const [transactions] = await pool.query(`
+            SELECT 
+                t.id, t.coach_id, t.client_reference, t.wave_session_id, t.wave_transaction_id, 
+                t.amount, t.currency, t.status, t.created_at, t.completed_at,
+                u.nom_complet AS coach_nom, u.email AS coach_email, u.telephone AS coach_telephone
+            FROM wave_transactions t
+            LEFT JOIN users u ON t.coach_id = u.id
+            ORDER BY t.created_at DESC
+        `);
+
+        // E. Réclamations & Support
+        const [reclamations] = await pool.query(`
+            SELECT * FROM reclamations 
+            ORDER BY FIELD(statut, 'ouvert', 'en_cours', 'resolu', 'ferme'), created_at DESC
+        `);
+
+        // F. Paramètres du SaaS
+        const [settingsRows] = await pool.query('SELECT * FROM platform_settings');
+        const settings = {};
+        settingsRows.forEach(row => {
+            settings[row.cle] = row.valeur;
+        });
+
+        // G. Évolution mensuelle pour le graphique Chart.js
+        const [monthlyTrends] = await pool.query(`
+            SELECT 
+                DATE_FORMAT(r.created_at, '%Y-%m') AS mois,
+                COUNT(*) AS count_reservations,
+                COALESCE(SUM(CASE WHEN r.statut = 'confirme' THEN s.prix ELSE 0 END), 0) AS ca_reservations
+            FROM reservations r
+            JOIN services s ON r.service_id = s.id
+            GROUP BY DATE_FORMAT(r.created_at, '%Y-%m')
+            ORDER BY mois ASC
+            LIMIT 12
+        `);
+
+        const stats = {
+            totalClients,
+            totalCoaches,
+            totalAdmins,
+            activeSubscriptions,
+            totalReservations,
+            confirmedReservations,
+            pendingReservations,
+            cancelledReservations,
+            confirmationRate,
+            prestationRevenue,
+            subscriptionRevenue,
+            totalRevenue
+        };
+
+        res.render('admin_dashboard', {
+            adminUser,
+            stats,
+            users,
+            reservations,
+            subscriptions,
+            transactions,
+            reclamations,
+            settings,
+            monthlyTrends,
+            query: req.query
+        });
+    } catch (error) {
+        console.error("Erreur chargement dashboard admin :", error);
+        res.status(500).send("Erreur lors du chargement du tableau de bord administrateur.");
+    }
+});
+
+// ACTION ADMIN : Modifier le rôle d'un utilisateur
+app.post('/admin/users/:id/role', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+    try {
+        if (['admin', 'coach', 'client'].includes(role)) {
+            await pool.query('UPDATE users SET role = ? WHERE id = ?', [role, id]);
+        }
+        res.redirect('/admin/dashboard?tab=users&success=role_updated');
+    } catch (err) {
+        console.error("Erreur mise à jour rôle utilisateur :", err);
+        res.redirect('/admin/dashboard?tab=users&error=role_failed');
+    }
+});
+
+// ACTION ADMIN : Gérer l'abonnement d'un coach (+30 jours ou activer/désactiver)
+app.post('/admin/users/:id/abonnement', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { action } = req.body;
+    try {
+        if (action === 'extend30' || action === 'activate') {
+            await pool.query(`
+                UPDATE users 
+                SET subscription_status = 'active',
+                    subscription_expires_at = DATE_ADD(GREATEST(COALESCE(subscription_expires_at, NOW()), NOW()), INTERVAL 30 DAY)
+                WHERE id = ?
+            `, [id]);
+        } else if (action === 'deactivate') {
+            await pool.query(`
+                UPDATE users 
+                SET subscription_status = 'inactive',
+                    subscription_expires_at = NOW()
+                WHERE id = ?
+            `, [id]);
+        }
+        res.redirect('/admin/dashboard?tab=subscriptions&success=sub_updated');
+    } catch (err) {
+        console.error("Erreur modification abonnement utilisateur :", err);
+        res.redirect('/admin/dashboard?tab=subscriptions&error=sub_failed');
+    }
+});
+
+// ACTION ADMIN : Supprimer un utilisateur
+app.post('/admin/users/:id/supprimer', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        if (Number(id) === Number(req.session.userId)) {
+            return res.redirect('/admin/dashboard?tab=users&error=cannot_delete_self');
+        }
+        await pool.query('DELETE FROM users WHERE id = ?', [id]);
+        res.redirect('/admin/dashboard?tab=users&success=user_deleted');
+    } catch (err) {
+        console.error("Erreur suppression utilisateur :", err);
+        res.redirect('/admin/dashboard?tab=users&error=delete_failed');
+    }
+});
+
+// ACTION ADMIN : Valider manuellement une transaction Wave
+app.post('/admin/transactions/:id/valider', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [txRows] = await pool.query('SELECT * FROM wave_transactions WHERE id = ?', [id]);
+        if (txRows.length > 0) {
+            const tx = txRows[0];
+            await pool.query(`
+                UPDATE wave_transactions 
+                SET status = 'completed', completed_at = NOW() 
+                WHERE id = ?
+            `, [id]);
+
+            if (tx.coach_id) {
+                await pool.query(`
+                    UPDATE users 
+                    SET subscription_status = 'active',
+                        subscription_expires_at = DATE_ADD(GREATEST(COALESCE(subscription_expires_at, NOW()), NOW()), INTERVAL 30 DAY)
+                    WHERE id = ?
+                `, [tx.coach_id]);
+            }
+        }
+        res.redirect('/admin/dashboard?tab=payments&success=tx_validated');
+    } catch (err) {
+        console.error("Erreur validation transaction Wave :", err);
+        res.redirect('/admin/dashboard?tab=payments&error=tx_failed');
+    }
+});
+
+// ACTION ADMIN : Mettre à jour le statut et la réponse d'une réclamation
+app.post('/admin/reclamations/:id/statut', requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { statut, reponse } = req.body;
+    try {
+        await pool.query(`
+            UPDATE reclamations 
+            SET statut = ?, reponse = COALESCE(?, reponse) 
+            WHERE id = ?
+        `, [statut, reponse ? reponse.trim() : null, id]);
+        res.redirect('/admin/dashboard?tab=reclamations&success=ticket_updated');
+    } catch (err) {
+        console.error("Erreur mise à jour ticket réclamation :", err);
+        res.redirect('/admin/dashboard?tab=reclamations&error=ticket_failed');
+    }
+});
+
+// ACTION ADMIN : Enregistrer les paramètres de la plateforme
+app.post('/admin/settings', requireAdmin, async (req, res) => {
+    try {
+        const settingsObj = req.body;
+        for (const [key, val] of Object.entries(settingsObj)) {
+            if (val !== undefined && val !== null) {
+                await pool.query(`
+                    INSERT INTO platform_settings (cle, valeur) 
+                    VALUES (?, ?) 
+                    ON DUPLICATE KEY UPDATE valeur = VALUES(valeur)
+                `, [key, String(val).trim()]);
+            }
+        }
+        res.redirect('/admin/dashboard?tab=settings&success=settings_saved');
+    } catch (err) {
+        console.error("Erreur enregistrement paramètres :", err);
+        res.redirect('/admin/dashboard?tab=settings&error=settings_failed');
+    }
+});
 
 // Dashboard Coach
 app.get('/coach/dashboard', requireAuth, async (req, res) => {
@@ -479,8 +790,8 @@ app.get('/coach/dashboard', requireAuth, async (req, res) => {
             url: process.env.WAVE_BUSINESS_URL || 'https://pay.wave.com/m/M_sn_knnmQCZiVi3h/c/sn/',
             phone: process.env.WAVE_BUSINESS_PHONE || '+221 70 989 97 94',
             number: process.env.WAVE_BUSINESS_NUMBER || '709899794',
-            amount: 20000,
-            paymentUrl: waveService.getBusinessPaymentUrl(20000)
+            amount: 5000,
+            paymentUrl: waveService.getBusinessPaymentUrl(5000)
         };
 
         res.render('coach_dashboard', {
@@ -657,7 +968,11 @@ app.post(['/coach/reservations/:id/statut', '/admin/reservations/:id/statut'], r
             }
         }
 
-        // Redirection vers le dashboard avec confirmation (notification interne envoyée au client, aucun mail)
+        // Redirection vers le dashboard adapté (admin ou coach) avec confirmation
+        const referer = req.headers.referer || '';
+        if (referer.includes('/admin/dashboard')) {
+            return res.redirect('/admin/dashboard?tab=reservations&success=reservation_updated');
+        }
         res.redirect('/coach/dashboard?status_updated=1');
     } catch (error) {
         console.error('Erreur lors de la mise à jour du statut :', error);
@@ -676,7 +991,7 @@ app.post(['/coach/reservations/:id/statut', '/admin/reservations/:id/statut'], r
 app.all('/api/payment/initiate', async (req, res) => {
     // Récupérer le coach_id soit depuis le body, les query params ou la session connectée
     const coachId = req.body?.coach_id || req.query?.coach_id || (req.session && req.session.userId);
-    const amount = Number(req.body?.amount || req.query?.amount) || 20000; // Montant de l'abonnement : 20 000 FCFA
+    const amount = Number(req.body?.amount || req.query?.amount) || 5000; // Montant de l'abonnement : 5 000 FCFA
 
     if (!coachId) {
         return res.status(400).json({ error: "L'identifiant du coach (coach_id) est obligatoire." });
@@ -836,7 +1151,7 @@ app.post('/api/payment/webhook', async (req, res) => {
                                 <div style="font-family: sans-serif; max-width: 600px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
                                     <h2 style="color: #1da1f2;">Paiement Wave reçu avec succès !</h2>
                                     <p>Bonjour <strong>${coachRows[0].nom_complet || 'Coach'}</strong>,</p>
-                                    <p>Votre paiement mensuel de <strong>20 000 FCFA</strong> via Wave a bien été confirmé.</p>
+                                    <p>Votre paiement mensuel de <strong>5 000 FCFA</strong> via Wave a bien été confirmé.</p>
                                     <p>Votre abonnement CoachFlow est maintenant <strong style="color: #10b981;">Actif</strong> pour une durée de 30 jours.</p>
                                     <p style="font-size: 13px; color: #64748b;">Référence Wave : <code>${waveTransactionId}</code></p>
                                 </div>
@@ -865,7 +1180,7 @@ app.post('/api/payment/simulate-webhook-dev', requireAuth, async (req, res) => {
 
         await pool.query(
             `INSERT INTO wave_transactions (coach_id, client_reference, amount, currency, status, wave_transaction_id, completed_at) 
-             VALUES (?, ?, 20000, 'XOF', 'completed', ?, NOW())`,
+             VALUES (?, ?, 5000, 'XOF', 'completed', ?, NOW())`,
             [coachId, clientReference, fakeTxId]
         );
 
@@ -895,7 +1210,7 @@ app.post('/api/payment/simulate-webhook-dev', requireAuth, async (req, res) => {
 app.post('/api/payment/wave-business/confirm', requireAuth, async (req, res) => {
     const coachId = req.session.userId;
     const { wave_transaction_id, amount } = req.body;
-    const paymentAmount = Number(amount) || 20000;
+    const paymentAmount = Number(amount) || 5000;
 
     if (!wave_transaction_id || wave_transaction_id.trim() === '') {
         return res.redirect('/coach/dashboard?payment=error&reason=' + encodeURIComponent("Veuillez renseigner votre ID ou référence de transaction Wave présent sur votre reçu."));

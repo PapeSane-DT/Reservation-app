@@ -17,8 +17,8 @@ class WaveService {
      * Sur smartphone, ce lien ouvre directement l'application Wave avec le compte et montant pré-remplis.
      * Le client n'a plus qu'à appuyer sur 'Valider' / 'Payer'.
      * 
-     * @param {number|string} [amount] - Montant en FCFA (ex: 20000)
-     * @returns {string} URL de navigation / deep link Wave (ex: https://pay.wave.com/m/M_sn_knnmQCZiVi3h/c/sn/?amount=20000)
+     * @param {number|string} [amount] - Montant en FCFA (ex: 5000)
+     * @returns {string} URL de navigation / deep link Wave (ex: https://pay.wave.com/m/M_sn_knnmQCZiVi3h/c/sn/?amount=5000)
      */
     getBusinessPaymentUrl(amount) {
         let base = (process.env.WAVE_BUSINESS_URL || 'https://pay.wave.com/m/M_sn_knnmQCZiVi3h/c/sn/').trim();
@@ -38,7 +38,7 @@ class WaveService {
      * et en toute transparence sur l'URL directe Wave Business marchand avec montant prescrit.
      * 
      * @param {Object} params
-     * @param {number|string} params.amount - Montant en FCFA (ex: 20000)
+     * @param {number|string} params.amount - Montant en FCFA (ex: 5000)
      * @param {string} [params.currency='XOF'] - Devise (XOF pour le Sénégal)
      * @param {string} params.errorUrl - URL de redirection en cas d'échec ou abandon
      * @param {string} params.successUrl - URL de redirection après validation
