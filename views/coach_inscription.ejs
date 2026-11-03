@@ -1,0 +1,94 @@
+<%- include('partials/header', { title: 'Devenir Coach & Formateur' }) %>
+
+<div class="form-container" style="max-width: 640px;">
+    <div class="form-card">
+        <div class="form-header">
+            <span class="badge-domain domain-business" style="margin-bottom: 12px; display: inline-block;">
+                <i class="fa-solid fa-graduation-cap"></i> Espace Prestataire
+            </span>
+            <h2>Créez votre profil Coach</h2>
+            <p>Rejoignez la plateforme, fixez librement vos tarifs et recevez vos premières réservations.</p>
+        </div>
+
+        <% if (typeof erreur !== 'undefined' && erreur) { %>
+            <div class="alert-error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span><%= erreur %></span>
+            </div>
+        <% } %>
+
+        <form action="/coach/inscription" method="POST">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                <div class="form-group">
+                    <label for="nom_complet">Nom complet <span class="required">*</span></label>
+                    <input type="text" id="nom_complet" name="nom_complet" placeholder="Ex: Jean Paul Diagne" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="telephone">Téléphone professionnel</label>
+                    <input type="tel" id="telephone" name="telephone" placeholder="Ex: +221 77 000 00 00">
+                </div>
+            </div>
+
+            <!-- DOMAINE D'EXPERTISE (OBLIGATOIRE) -->
+            <div class="form-group">
+                <label for="expertise">Domaine d'expertise principal <span class="required">* (Obligatoire)</span></label>
+                <select id="expertise" name="expertise" required onchange="verifierAutreDomaine(this.value)">
+                    <option value="" disabled selected>-- Sélectionnez votre spécialité --</option>
+                    <option value="Business & Entrepreneuriat">💼 Business & Entrepreneuriat</option>
+                    <option value="Fitness & Remise en forme">🏋️ Fitness & Remise en forme</option>
+                    <option value="Langues & Communication">🌍 Langues & Communication</option>
+                    <option value="Tech, Code & Data">💻 Tech, Code & Data</option>
+                    <option value="Développement Personnel">🌱 Développement Personnel & Soft Skills</option>
+                    <option value="Marketing & Vente">📈 Marketing & Vente</option>
+                    <option value="Autre">✨ Autre spécialité (préciser)...</option>
+                </select>
+                <div class="form-help">Ce domaine apparaîtra en évidence sur votre fiche et le catalogue.</div>
+            </div>
+
+            <div class="form-group" id="champ-autre-domaine" style="display: none;">
+                <label for="autre_expertise">Précisez votre domaine d'expertise <span class="required">*</span></label>
+                <input type="text" id="autre_expertise" name="autre_expertise" placeholder="Ex: Photographie, Éloquence, etc.">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Adresse email professionnelle <span class="required">*</span></label>
+                <input type="email" id="email" name="email" placeholder="votre.email@domaine.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Mot de passe <span class="required">*</span></label>
+                <input type="password" id="password" name="password" placeholder="Minimum 6 caractères" required minlength="6">
+            </div>
+
+            <div class="form-group">
+                <label for="bio">Courte bio / Présentation</label>
+                <textarea id="bio" name="bio" rows="3" placeholder="Présentez brièvement vos qualifications, certifications et votre approche pédagogique..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 10px;">
+                <i class="fa-solid fa-rocket"></i> Créer mon compte Coach
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 24px; font-size: 14px; color: var(--text-muted);">
+            Vous avez déjà un compte ? <a href="/coach/connexion" style="color: var(--primary); font-weight: 600; text-decoration: none;">Connectez-vous ici</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    function verifierAutreDomaine(val) {
+        const divAutre = document.getElementById('champ-autre-domaine');
+        const inputAutre = document.getElementById('autre_expertise');
+        if (val === 'Autre') {
+            divAutre.style.display = 'block';
+            inputAutre.required = true;
+        } else {
+            divAutre.style.display = 'none';
+            inputAutre.required = false;
+        }
+    }
+</script>
+
+<%- include('partials/footer') %>

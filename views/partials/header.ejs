@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= typeof title !== 'undefined' ? title + ' — ' : '' %>CoachFlow | Réservation Coaching & Formation</title>
+    <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/catalogue" class="nav-brand">
+                <div class="brand-badge"><i class="fa-solid fa-bolt"></i></div>
+                <span>Coach<span class="highlight">Flow</span></span>
+            </a>
+
+            <div class="nav-actions">
+                <a href="/catalogue" class="nav-link"><i class="fa-solid fa-compass"></i> Explorer</a>
+                
+                <% if (typeof user !== 'undefined' && user) { %>
+                    <a href="/coach/dashboard" class="btn btn-secondary btn-sm">
+                        <i class="fa-solid fa-chart-line"></i> Dashboard (<%= user.nom_complet || user.email %>)
+                    </a>
+                    <a href="/coach/services/nouveau" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-plus"></i> Nouveau tarif
+                    </a>
+                    <a href="/coach/deconnexion" class="nav-link" title="Se déconnecter">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </a>
+                <% } else { %>
+                    <a href="/coach/connexion" class="btn btn-outline btn-sm">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i> Espace Coach
+                    </a>
+                    <a href="/coach/inscription" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-user-plus"></i> Devenir Coach
+                    </a>
+                <% } %>
+            </div>
+        </div>
+    </nav>

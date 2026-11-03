@@ -1,0 +1,78 @@
+<%- include('partials/header', { title: 'Ajouter une prestation ou formation' }) %>
+
+<div class="form-container" style="max-width: 680px;">
+    <div style="margin-bottom: 20px;">
+        <a href="/coach/dashboard" style="color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-arrow-left"></i> Retour au tableau de bord
+        </a>
+    </div>
+
+    <div class="form-card">
+        <div class="form-header">
+            <span class="badge-domain domain-business" style="margin-bottom: 12px; display: inline-block;">
+                <i class="fa-solid fa-tag"></i> Tarification Libre
+            </span>
+            <h2>Créer une prestation ou formation</h2>
+            <p>Définissez votre offre, fixez librement votre prix et proposez-la immédiatement sur le catalogue.</p>
+        </div>
+
+        <% if (typeof erreur !== 'undefined' && erreur) { %>
+            <div class="alert-error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span><%= erreur %></span>
+            </div>
+        <% } %>
+
+        <form action="/coach/services/nouveau" method="POST">
+            <!-- Nom / Titre -->
+            <div class="form-group">
+                <label for="nom">Intitulé de la formation ou du coaching <span class="required">*</span></label>
+                <input type="text" id="nom" name="nom" placeholder="Ex: Masterclass Lancement de Produit, Coaching HIIT 1-on-1..." required autofocus>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <!-- Domaine -->
+                <div class="form-group">
+                    <label for="domaine">Domaine d'expertise <span class="required">*</span></label>
+                    <select id="domaine" name="domaine" required>
+                        <option value="Business" <%= (coach.expertise && coach.expertise.includes('Business')) ? 'selected' : '' %>>💼 Business</option>
+                        <option value="Fitness" <%= (coach.expertise && coach.expertise.includes('Fitness')) ? 'selected' : '' %>>🏋️ Fitness</option>
+                        <option value="Langues" <%= (coach.expertise && coach.expertise.includes('Langue')) ? 'selected' : '' %>>🌍 Langues</option>
+                        <option value="Tech" <%= (coach.expertise && coach.expertise.includes('Tech')) ? 'selected' : '' %>>💻 Tech & Informatique</option>
+                        <option value="Développement Personnel" <%= (coach.expertise && coach.expertise.includes('Personnel')) ? 'selected' : '' %>>🌱 Dév. Personnel</option>
+                        <option value="Droit & Conseil">⚖️ Droit & Conseil</option>
+                        <option value="Autre">✨ Autre</option>
+                    </select>
+                </div>
+
+                <!-- Durée -->
+                <div class="form-group">
+                    <label for="duree_minutes">Durée de la séance (minutes) <span class="required">*</span></label>
+                    <input type="number" id="duree_minutes" name="duree_minutes" value="60" min="15" step="15" required>
+                </div>
+            </div>
+
+            <!-- PRIX LIBRE -->
+            <div class="form-group">
+                <label for="prix">Votre tarif libre (FCFA) <span class="required">*</span></label>
+                <div style="position: relative;">
+                    <input type="number" id="prix" name="prix" placeholder="Ex: 25000" min="0" step="500" required style="font-size: 18px; font-weight: 700; padding-right: 70px;">
+                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-weight: 700; color: var(--text-muted); font-size: 14px;">FCFA</span>
+                </div>
+                <div class="form-help">Vous fixez librement votre rémunération pour cette prestation.</div>
+            </div>
+
+            <!-- Description -->
+            <div class="form-group">
+                <label for="description">Description détaillée du programme</label>
+                <textarea id="description" name="description" rows="4" placeholder="Objectifs de la séance, public cible, méthode pédagogique, livrables éventuels..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 10px;">
+                <i class="fa-solid fa-plus-circle"></i> Publier cette prestation
+            </button>
+        </form>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

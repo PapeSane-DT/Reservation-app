@@ -4,6 +4,8 @@
   "description": "",
   "main": "reservation-app_server.js",
   "scripts": {
+    "start": "node reservation-app_server.js",
+    "dev": "node --watch reservation-app_server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

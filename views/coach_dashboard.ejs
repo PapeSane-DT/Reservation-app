@@ -1,0 +1,377 @@
+<%- include('partials/header', { title: 'Dashboard Coach' }) %>
+
+<div class="dashboard-container">
+    <!-- Profil & En-tête Coach -->
+    <div class="dashboard-header">
+        <div class="coach-profile-summary">
+            <div class="avatar-big">
+                <%= (coach.nom_complet || coach.email).charAt(0).toUpperCase() %>
+            </div>
+            <div>
+                <h1 style="font-family: var(--font-heading); font-size: 24px; font-weight: 800; color: var(--dark); margin-bottom: 4px;">
+                    <%= coach.nom_complet || 'Espace Coach' %>
+                </h1>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <span class="badge-domain domain-business">
+                        <i class="fa-solid fa-certificate"></i> Expertise : <%= coach.expertise || 'Expert' %>
+                    </span>
+                    <span style="font-size: 13.5px; color: var(--text-muted);">
+                        <i class="fa-regular fa-envelope"></i> <%= coach.email %>
+                    </span>
+                    <% if (coach.telephone) { %>
+                        <span style="font-size: 13.5px; color: var(--text-muted);">
+                            <i class="fa-solid fa-phone"></i> <%= coach.telephone %>
+                        </span>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <a href="/coach/services/nouveau" class="btn btn-primary">
+                <i class="fa-solid fa-plus"></i> Fixer un nouveau tarif
+            </a>
+            <a href="/catalogue" target="_blank" class="btn btn-outline">
+                <i class="fa-solid fa-eye"></i> Voir le catalogue public
+            </a>
+        </div>
+    <!-- Alertes Statut Paiement Wave et Notification Email -->
+    <div id="dashboard-alerts" style="margin-bottom: 24px;"></div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const alertsContainer = document.getElementById('dashboard-alerts');
+        let htmlAlerts = '';
+
+        // 1. Alerte relative à l'envoi d'email
+        if (urlParams.get('status_updated')) {
+            const emailStatus = urlParams.get('email_status');
+            if (emailStatus === 'ok') {
+                htmlAlerts += `
+                    <div style="background: #ecfdf5; border: 1.5px solid #10b981; color: #065f46; padding: 14px 18px; border-radius: var(--radius-md); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i class="fa-solid fa-envelope-circle-check" style="font-size: 20px; color: #10b981;"></i>
+                            <div>
+                                <strong>Statut mis à jour et email envoyé !</strong> Le client a bien reçu la notification par email.
+                            </div>
+                        </div>
+                        <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #065f46;">&times;</button>
+                    </div>
+                `;
+            } else if (emailStatus) {
+                const decodedReason = decodeURIComponent(emailStatus);
+                htmlAlerts += `
+                    <div style="background: #fffbeb; border: 1.5px solid #f59e0b; color: #92400e; padding: 14px 18px; border-radius: var(--radius-md); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: flex-start; gap: 10px;">
+                            <i class="fa-solid fa-triangle-exclamation" style="font-size: 20px; color: #f59e0b; margin-top: 2px;"></i>
+                            <div>
+                                <strong>Statut mis à jour en base de données, mais l'email n'a pas pu être envoyé.</strong>
+                                <div style="font-size: 13px; margin-top: 4px; color: #78350f;">
+                                    <strong>Raison technique :</strong> ${decodedReason}
+                                    <br><em>Pour que les emails partent réellement, configurez votre clé Resend valide (resend.com) ou vos identifiants Gmail dans le fichier <code>.env</code>.</em>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #92400e;">&times;</button>
+                    </div>
+                `;
+            }
+        }
+
+        // 2. Alerte relative au paiement Wave
+        if (urlParams.get('payment') === 'success') {
+            const txId = urlParams.get('tx_id') || urlParams.get('ref');
+            htmlAlerts += `
+                <div style="background: #ecfdf5; border: 1.5px solid #10b981; color: #065f46; padding: 16px 20px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="fa-solid fa-circle-check" style="font-size: 24px; color: #10b981;"></i>
+                        <div>
+                            <strong>Paiement Wave validé avec succès !</strong>
+                            <div style="font-size: 13.5px;">Votre abonnement mensuel a été activé pour 30 jours via Wave. ${txId ? `(Réf : <code>${txId}</code>)` : ''}</div>
+                        </div>
+                    </div>
+                    <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #065f46;">&times;</button>
+                </div>
+            `;
+        } else if (urlParams.get('payment') === 'error') {
+            const reason = urlParams.get('reason') ? decodeURIComponent(urlParams.get('reason')) : "Le paiement a été interrompu ou n'a pas pu être initialisé.";
+            htmlAlerts += `
+                <div style="background: #fef2f2; border: 1.5px solid #ef4444; color: #991b1b; padding: 16px 20px; border-radius: var(--radius-md); display: flex; align-items: flex-start; justify-content: space-between;">
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <i class="fa-solid fa-circle-exclamation" style="font-size: 24px; color: #ef4444; margin-top: 2px;"></i>
+                        <div>
+                            <strong>Erreur paiement Wave</strong>
+                            <div style="font-size: 13.5px; margin-top: 4px; color: #7f1d1d;">
+                                ${reason}
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #991b1b;">&times;</button>
+                </div>
+            `;
+        }
+
+        if (htmlAlerts) {
+            alertsContainer.innerHTML = htmlAlerts;
+        }
+    </script>
+
+    <!-- SECTION ABONNEMENT MENSUEL WAVE -->
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border-radius: var(--radius-lg); padding: 26px 30px; margin-bottom: 32px; box-shadow: var(--shadow-lg); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px; border: 1px solid rgba(255,255,255,0.08);">
+        <div style="max-width: 580px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                <span style="background: #1da1f2; color: white; font-size: 11.5px; font-weight: 800; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 5px;">
+                    <i class="fa-solid fa-wave-square"></i> Wave Sénégal
+                </span>
+                <% if (coach.subscription_status === 'active' && coach.subscription_expires_at && new Date(coach.subscription_expires_at) > new Date()) { %>
+                    <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; border: 1px solid rgba(16, 185, 129, 0.4);">
+                        <i class="fa-solid fa-circle-check"></i> Abonnement Actif
+                    </span>
+                <% } else { %>
+                    <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; border: 1px solid rgba(245, 158, 11, 0.4);">
+                        <i class="fa-solid fa-clock"></i> Abonnement Inactif / Expiré
+                    </span>
+                <% } %>
+            </div>
+
+            <h3 style="font-family: var(--font-heading); font-size: 22px; font-weight: 800; margin-bottom: 6px;">
+                Abonnement Mensuel Prestataire (20 000 FCFA / mois)
+            </h3>
+
+            <% if (coach.subscription_status === 'active' && coach.subscription_expires_at && new Date(coach.subscription_expires_at) > new Date()) { %>
+                <p style="color: #cbd5e1; font-size: 14px; margin: 0 0 12px;">
+                    Votre compte dispose de tous les accès pros. Date d'échéance : <strong style="color: white;"><%= new Date(coach.subscription_expires_at).toLocaleDateString('fr-FR') %></strong>. Vous pouvez prolonger de 30 jours à tout moment.
+                </p>
+            <% } else { %>
+                <p style="color: #94a3b8; font-size: 14px; margin: 0 0 12px;">
+                    Activez votre abonnement mensuel de <strong>20 000 FCFA</strong> pour publier vos offres et recevoir des réservations d'élèves en illimité.
+                </p>
+            <% } %>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: #94a3b8; background: rgba(255,255,255,0.04); padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); width: fit-content;">
+                <div>
+                    <i class="fa-solid fa-phone" style="color: #1da1f2;"></i> Numéro Wave : <strong style="color: white;"><%= waveBusiness.phone %></strong>
+                </div>
+                <div>
+                    <i class="fa-solid fa-building-columns" style="color: #1da1f2;"></i> Marchand : <strong style="color: white;"><%= waveBusiness.name %></strong>
+                </div>
+            </div>
+        </div>
+
+        <div style="min-width: 300px; max-width: 360px; width: 100%;">
+            <!-- 1. Bouton qui ouvre directement Wave sur le téléphone avec montant pré-rempli -->
+            <a href="<%= (waveBusiness && waveBusiness.paymentUrl) ? waveBusiness.paymentUrl : 'https://pay.wave.com/m/M_sn_knnmQCZiVi3h/c/sn/?amount=20000' %>" target="_blank" class="btn btn-lg" style="background: #1da1f2; color: white; text-decoration: none; border: none; box-shadow: 0 4px 14px rgba(29, 161, 242, 0.4); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: transform 0.2s ease; width: 100%; padding: 14px 20px; border-radius: var(--radius-md); box-sizing: border-box;">
+                <i class="fa-solid fa-mobile-screen-button" style="font-size: 20px;"></i>
+                <span>
+                    <%= (coach.subscription_status === 'active' && coach.subscription_expires_at && new Date(coach.subscription_expires_at) > new Date()) ? 'Prolonger avec Wave (+30 j)' : 'Payer 20 000 FCFA avec Wave' %>
+                </span>
+            </a>
+            <div style="font-size: 11.5px; color: #94a3b8; text-align: center; margin-top: 8px;">
+                <i class="fa-solid fa-bolt" style="color: #38bdf8;"></i> Ouvre directement l'application Wave (20 000 FCFA pré-remplis)
+            </div>
+
+            <!-- 2. Formulaire pour valider la transaction et activer l'abonnement -->
+            <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 12px 14px; margin-top: 14px;">
+                <div style="font-size: 12px; font-weight: 700; color: #e2e8f0; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-check-double" style="color: #34d399;"></i> Déjà validé sur votre appli Wave ?
+                </div>
+                <form action="/api/payment/wave-business/confirm" method="POST" style="display: flex; gap: 8px; margin: 0;">
+                    <input type="hidden" name="amount" value="<%= (waveBusiness && waveBusiness.amount) ? waveBusiness.amount : 20000 %>">
+                    <input type="text" name="wave_transaction_id" placeholder="ID transaction / Reçu Wave" required style="flex: 1; min-width: 140px; background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 8px 10px; border-radius: 6px; font-size: 12.5px; outline: none;">
+                    <button type="submit" style="background: #10b981; color: white; border: none; font-weight: 700; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; white-space: nowrap;">
+                        Activer (+30j)
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Outil Développeur Local -->
+            <div style="margin-top: 10px; text-align: center;">
+                <details style="font-size: 11.5px; color: #94a3b8;">
+                    <summary style="cursor: pointer; opacity: 0.75;"><i class="fa-solid fa-code"></i> Outil test développeur</summary>
+                    <div style="background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 6px; margin-top: 6px; border: 1px dashed rgba(255,255,255,0.2);">
+                        <form action="/api/payment/simulate-webhook-dev" method="POST" style="margin: 0;">
+                            <button type="submit" style="background: none; border: 1px solid rgba(255,255,255,0.3); color: #cbd5e1; font-size: 11px; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                                Simuler manuellement le Webhook Wave (Test local)
+                            </button>
+                        </form>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques rapides -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-title"><i class="fa-solid fa-book-bookmark"></i> Prestations / Formations</div>
+            <div class="stat-value"><%= services.length %></div>
+            <div class="stat-sub">En ligne sur le catalogue</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title"><i class="fa-solid fa-calendar-check"></i> Total Réservations</div>
+            <div class="stat-value"><%= reservations.length %></div>
+            <div class="stat-sub">Demandes clients reçues</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title"><i class="fa-solid fa-circle-check"></i> Séances Confirmées</div>
+            <div class="stat-value"><%= stats.confirmees %></div>
+            <div class="stat-sub"><%= stats.en_attente %> en attente de réponse</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title"><i class="fa-solid fa-coins"></i> Revenu Potentiel</div>
+            <div class="stat-value" style="color: var(--primary);"><%= Number(stats.revenu).toLocaleString('fr-FR') %> <span style="font-size: 16px;">FCFA</span></div>
+            <div class="stat-sub">Sur les séances confirmées</div>
+        </div>
+    </div>
+
+    <!-- Section 1 : Mes Prestations & Tarifs -->
+    <div class="table-card">
+        <div class="table-header">
+            <div>
+                <h3>Mes Prestations & Tarifs fixés (<%= services.length %>)</h3>
+                <p style="font-size: 13px; color: var(--text-muted);">Vous fixez librement vos prix pour chaque prestation.</p>
+            </div>
+            <a href="/coach/services/nouveau" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-plus"></i> Ajouter une offre
+            </a>
+        </div>
+
+        <% if (services.length === 0) { %>
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                <p style="margin-bottom: 14px;">Vous n'avez pas encore publié de formation ou séance de coaching.</p>
+                <a href="/coach/services/nouveau" class="btn btn-primary btn-sm">+ Publier ma première prestation</a>
+            </div>
+        <% } else { %>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Prestation</th>
+                            <th>Domaine</th>
+                            <th>Durée</th>
+                            <th>Tarif fixé</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% services.forEach(function(s) { %>
+                            <tr>
+                                <td>
+                                    <strong style="color: var(--dark); display: block;"><%= s.nom %></strong>
+                                    <span style="font-size: 12.5px; color: var(--text-muted);"><%= s.description ? s.description.substring(0, 70) + '...' : '' %></span>
+                                </td>
+                                <td>
+                                    <span class="badge-domain domain-business" style="font-size: 11px;">
+                                        <%= s.domaine || 'Général' %>
+                                    </span>
+                                </td>
+                                <td><i class="fa-regular fa-clock"></i> <%= s.duree_minutes %> min</td>
+                                <td>
+                                    <strong style="color: var(--primary); font-size: 15px;">
+                                        <%= Number(s.prix).toLocaleString('fr-FR') %> FCFA
+                                    </strong>
+                                </td>
+                                <td style="text-align: right;">
+                                    <form action="/coach/services/<%= s.id %>/supprimer" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette prestation ?');" style="display: inline;">
+                                        <button type="submit" class="btn btn-outline btn-sm" style="color: var(--danger); border-color: #fecaca;" title="Supprimer">
+                                            <i class="fa-regular fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Section 2 : Réservations Clients Reçues -->
+    <div class="table-card">
+        <div class="table-header">
+            <div>
+                <h3>Réservations Clients Reçues (<%= reservations.length %>)</h3>
+                <p style="font-size: 13px; color: var(--text-muted);">Coordonnées des élèves (Prénom, Nom, Email, Téléphone) et gestion du statut.</p>
+            </div>
+        </div>
+
+        <% if (reservations.length === 0) { %>
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                <p>Aucune réservation reçue pour le moment. Vos demandes apparaîtront ici en temps réel.</p>
+            </div>
+        <% } else { %>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Client (Élève)</th>
+                            <th>Contact</th>
+                            <th>Prestation</th>
+                            <th>Date prévue</th>
+                            <th>Statut</th>
+                            <th>Changer statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% reservations.forEach(function(r) { %>
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 700; color: var(--dark);">
+                                        <%= (r.prenom || r.nom) ? (r.prenom + ' ' + (r.nom || '')) : ('Client #' + r.utilisateur_id) %>
+                                    </div>
+                                    <span style="font-size: 11.5px; color: var(--text-light);">
+                                        Réservé le <%= r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : 'N/A' %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div style="font-size: 13px;">
+                                        <% if (r.email) { %>
+                                            <div><a href="mailto:<%= r.email %>" style="color: var(--primary); text-decoration: none;"><i class="fa-regular fa-envelope"></i> <%= r.email %></a></div>
+                                        <% } %>
+                                        <% if (r.telephone) { %>
+                                            <div style="margin-top: 3px;"><a href="tel:<%= r.telephone %>" style="color: var(--text-muted); text-decoration: none;"><i class="fa-solid fa-phone"></i> <%= r.telephone %></a></div>
+                                        <% } %>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong><%= r.service_nom %></strong>
+                                    <% if (r.prix) { %>
+                                        <div style="font-size: 12px; color: var(--text-muted);"><%= Number(r.prix).toLocaleString('fr-FR') %> FCFA</div>
+                                    <% } %>
+                                </td>
+                                <td>
+                                    <div style="font-weight: 600;">
+                                        <i class="fa-regular fa-calendar"></i> 
+                                        <%= (r.date_reservation instanceof Date) ? r.date_reservation.toISOString().split('T')[0] : r.date_reservation %>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge-status badge-<%= r.statut %>">
+                                        <% if (r.statut === 'confirme') { %>
+                                            <i class="fa-solid fa-circle-check"></i> Confirmé
+                                        <% } else if (r.statut === 'annule') { %>
+                                            <i class="fa-solid fa-circle-xmark"></i> Annulé
+                                        <% } else { %>
+                                            <i class="fa-solid fa-clock"></i> En attente
+                                        <% } %>
+                                    </span>
+                                </td>
+                                <td>
+                                    <form action="/coach/reservations/<%= r.id %>/statut" method="POST" style="display: inline-flex; align-items: center; gap: 6px;">
+                                        <select name="statut" onchange="this.form.submit()" style="padding: 6px 10px; border-radius: 6px; border: 1.5px solid var(--border); font-size: 13px; font-weight: 600; background: white; cursor: pointer;">
+                                            <option value="en_attente" <%= r.statut === 'en_attente' ? 'selected' : '' %>>En attente</option>
+                                            <option value="confirme" <%= r.statut === 'confirme' ? 'selected' : '' %>>Confirmer ✅</option>
+                                            <option value="annule" <%= r.statut === 'annule' ? 'selected' : '' %>>Annuler ❌</option>
+                                        </select>
+                                    </form>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

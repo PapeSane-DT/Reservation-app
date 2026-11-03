@@ -1,0 +1,42 @@
+<%- include('partials/header', { title: 'Connexion Espace Coach' }) %>
+
+<div class="form-container">
+    <div class="form-card">
+        <div class="form-header">
+            <div style="width: 54px; height: 54px; background: var(--primary-light); color: var(--primary); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 16px;">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h2>Connexion Espace Coach</h2>
+            <p>Accédez à votre tableau de bord, gérez vos prestations et vos réservations clients.</p>
+        </div>
+
+        <% if (typeof erreur !== 'undefined' && erreur) { %>
+            <div class="alert-error">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span><%= erreur %></span>
+            </div>
+        <% } %>
+
+        <form action="/coach/connexion" method="POST">
+            <div class="form-group">
+                <label for="email">Adresse email</label>
+                <input type="email" id="email" name="email" placeholder="votre.email@domaine.com" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Mot de passe</label>
+                <input type="password" id="password" name="password" placeholder="Votre mot de passe" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 10px;">
+                <i class="fa-solid fa-right-to-bracket"></i> Se connecter
+            </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 24px; font-size: 14px; color: var(--text-muted);">
+            Nouveau sur la plateforme ? <a href="/coach/inscription" style="color: var(--primary); font-weight: 600; text-decoration: none;">Inscrivez-vous comme coach</a>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
