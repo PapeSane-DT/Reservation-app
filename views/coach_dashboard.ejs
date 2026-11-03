@@ -43,39 +43,19 @@
         const alertsContainer = document.getElementById('dashboard-alerts');
         let htmlAlerts = '';
 
-        // 1. Alerte relative à l'envoi d'email
+        // 1. Alerte relative à la mise à jour et notification interne
         if (urlParams.get('status_updated')) {
-            const emailStatus = urlParams.get('email_status');
-            if (emailStatus === 'ok') {
-                htmlAlerts += `
-                    <div style="background: #ecfdf5; border: 1.5px solid #10b981; color: #065f46; padding: 14px 18px; border-radius: var(--radius-md); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <i class="fa-solid fa-envelope-circle-check" style="font-size: 20px; color: #10b981;"></i>
-                            <div>
-                                <strong>Statut mis à jour et email envoyé !</strong> Le client a bien reçu la notification par email.
-                            </div>
+            htmlAlerts += `
+                <div style="background: #ecfdf5; border: 1.5px solid #10b981; color: #065f46; padding: 14px 18px; border-radius: var(--radius-md); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i class="fa-solid fa-bell" style="font-size: 20px; color: #10b981;"></i>
+                        <div>
+                            <strong>Statut mis à jour !</strong> Le client a reçu sa notification interne en direct avec votre nom, la date et l'heure de la séance.
                         </div>
-                        <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #065f46;">&times;</button>
                     </div>
-                `;
-            } else if (emailStatus) {
-                const decodedReason = decodeURIComponent(emailStatus);
-                htmlAlerts += `
-                    <div style="background: #fffbeb; border: 1.5px solid #f59e0b; color: #92400e; padding: 14px 18px; border-radius: var(--radius-md); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
-                        <div style="display: flex; align-items: flex-start; gap: 10px;">
-                            <i class="fa-solid fa-triangle-exclamation" style="font-size: 20px; color: #f59e0b; margin-top: 2px;"></i>
-                            <div>
-                                <strong>Statut mis à jour en base de données, mais l'email n'a pas pu être envoyé.</strong>
-                                <div style="font-size: 13px; margin-top: 4px; color: #78350f;">
-                                    <strong>Raison technique :</strong> ${decodedReason}
-                                    <br><em>Pour que les emails partent réellement, configurez votre clé Resend valide (resend.com) ou vos identifiants Gmail dans le fichier <code>.env</code>.</em>
-                                </div>
-                            </div>
-                        </div>
-                        <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #92400e;">&times;</button>
-                    </div>
-                `;
-            }
+                    <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #065f46;">&times;</button>
+                </div>
+            `;
         }
 
         // 2. Alerte relative au paiement Wave
@@ -343,6 +323,9 @@
                                     <div style="font-weight: 600;">
                                         <i class="fa-regular fa-calendar"></i> 
                                         <%= (r.date_reservation instanceof Date) ? r.date_reservation.toISOString().split('T')[0] : r.date_reservation %>
+                                    </div>
+                                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                                        <i class="fa-regular fa-clock"></i> <%= r.heure_reservation || '10:00' %>
                                     </div>
                                 </td>
                                 <td>

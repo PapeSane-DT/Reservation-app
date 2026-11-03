@@ -6,6 +6,7 @@ const path = require('path');
 const { Resend } = require('resend');
 const waveService = require('./services/waveService');
 const emailService = require('./services/emailService');
+const notificationService = require('./services/notificationService');
 require('dotenv').config();
 
 const app = express();
@@ -30,7 +31,7 @@ app.use(session({
     cookie: { maxAge: 1000 * 60 * 60 * 24 } // 24 heures
 }));
 
-// Rendre la session utilisateur disponible dans tous les templates EJS
+// Rendre la session utilisateur et client disponible dans tous les templates EJS
 app.use((req, res, next) => {
     res.locals.user = req.session.userId ? {
         id: req.session.userId,
@@ -39,6 +40,8 @@ app.use((req, res, next) => {
         role: req.session.role,
         expertise: req.session.expertise
     } : null;
+    res.locals.clientEmail = req.session.clientEmail || null;
+    res.locals.clientNom = req.session.clientNom || null;
     next();
 });
 
@@ -59,6 +62,42 @@ const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10
 });
+
+// Initialisation du service de notifications internes
+notificationService.setPool(pool);
+
+// Initialisation automatique des tables et colonnes pour les notifications
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                reservation_id INT NULL,
+                user_id INT NULL,
+                client_email VARCHAR(255) NOT NULL,
+                client_nom VARCHAR(255) NULL,
+                titre VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                coach_nom VARCHAR(255) NULL,
+                date_seance VARCHAR(50) NULL,
+                heure_seance VARCHAR(20) NULL,
+                service_nom VARCHAR(255) NULL,
+                type VARCHAR(50) DEFAULT 'reservation_confirmee',
+                lu TINYINT(1) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_client_email (client_email),
+                INDEX idx_lu (lu),
+                INDEX idx_user_id (user_id)
+            )
+        `);
+        const [resCols] = await pool.query("SHOW COLUMNS FROM reservations LIKE 'heure_reservation'");
+        if (resCols.length === 0) {
+            await pool.query("ALTER TABLE reservations ADD COLUMN heure_reservation VARCHAR(20) DEFAULT '10:00'");
+        }
+    } catch (e) {
+        console.warn("Initialisation auto tables notifications :", e.message);
+    }
+})();
 
 // Service d'envoi d'emails transactionnels
 const resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_key');
@@ -142,9 +181,10 @@ app.get('/reserver/:id', async (req, res) => {
     }
 });
 
-// ROUTE : Traitement de la réservation (STRICTEMENT LES 4 CHAMPS CLIENTS REQUIS)
+// ROUTE : Traitement de la réservation (STRICTEMENT LES 4 CHAMPS CLIENTS REQUIS + DATE & HEURE)
 app.post('/reserver/confirmer', async (req, res) => {
-    const { service_id, prenom, nom, email, telephone, date_reservation } = req.body;
+    const { service_id, prenom, nom, email, telephone, date_reservation, heure_reservation } = req.body;
+    const heureVal = heure_reservation ? heure_reservation.trim() : '10:00';
 
     try {
         // Validation stricte des 4 informations requises + la date
@@ -158,8 +198,8 @@ app.post('/reserver/confirmer', async (req, res) => {
 
         // Vérifier si le créneau est déjà réservé pour ce service
         const [dejaPris] = await pool.query(
-            "SELECT id FROM reservations WHERE service_id = ? AND date_reservation = ? AND statut != 'annule'",
-            [service_id, date_reservation]
+            "SELECT id FROM reservations WHERE service_id = ? AND date_reservation = ? AND heure_reservation = ? AND statut != 'annule'",
+            [service_id, date_reservation, heureVal]
         );
 
         if (dejaPris.length > 0) {
@@ -172,16 +212,20 @@ app.post('/reserver/confirmer', async (req, res) => {
 
             return res.render('formulaire_reservation', {
                 service: sRows[0],
-                erreur: "Ce créneau horaire est déjà réservé. Veuillez choisir une autre date."
+                erreur: `Ce créneau (${date_reservation} à ${heureVal}) est déjà réservé. Veuillez choisir un autre horaire.`
             });
         }
 
-        // Enregistrer la réservation avec les 4 champs client
+        // Enregistrer la réservation avec date et heure
         const [insertResult] = await pool.query(
-            `INSERT INTO reservations (service_id, prenom, nom, email, telephone, date_reservation, statut, utilisateur_id) 
-             VALUES (?, ?, ?, ?, ?, ?, 'en_attente', 0)`,
-            [service_id, prenom.trim(), nom.trim(), email.trim(), telephone.trim(), date_reservation]
+            `INSERT INTO reservations (service_id, prenom, nom, email, telephone, date_reservation, heure_reservation, statut, utilisateur_id) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', 0)`,
+            [service_id, prenom.trim(), nom.trim(), email.trim(), telephone.trim(), date_reservation, heureVal]
         );
+
+        // Enregistrer l'email du client en session pour afficher immédiatement ses notifications dans la cloche
+        req.session.clientEmail = email.trim();
+        req.session.clientNom = `${prenom.trim()} ${nom.trim()}`;
 
         // Récupérer les informations du service et du coach
         const [serviceRows] = await pool.query(`
@@ -191,6 +235,27 @@ app.post('/reserver/confirmer', async (req, res) => {
             WHERE services.id = ?
         `, [service_id]);
         const service = serviceRows[0] || { nom: 'Prestation', prix: 0 };
+
+        // Notifier le coach s'il est inscrit
+        if (service.coach_email) {
+            try {
+                await notificationService.createNotification({
+                    reservation_id: insertResult.insertId,
+                    user_id: service.coach_id,
+                    client_email: service.coach_email,
+                    client_nom: `${prenom.trim()} ${nom.trim()}`,
+                    titre: `Nouvelle réservation reçue 📅`,
+                    message: `${prenom.trim()} ${nom.trim()} a réservé "${service.nom}" pour le ${date_reservation} à ${heureVal}.`,
+                    coach_nom: service.coach_nom || 'Coach',
+                    date_seance: date_reservation,
+                    heure_seance: heureVal,
+                    service_nom: service.nom,
+                    type: 'nouvelle_reservation'
+                });
+            } catch (errNotif) {
+                console.warn('Notice notification coach :', errNotif.message);
+            }
+        }
 
         // Définition des coordonnées Wave Business pour le paiement de la séance
         const wavePaymentUrl = waveService.getBusinessPaymentUrl(service.prix);
@@ -202,41 +267,24 @@ app.post('/reserver/confirmer', async (req, res) => {
             paymentUrl: wavePaymentUrl
         };
 
-        // Envoi de l'email de confirmation au client via emailService
-        const emailContent = `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-                <h2 style="color: #4361ee;">Bonjour ${prenom} ${nom},</h2>
-                <p>Votre demande de réservation pour la formation/coaching <strong>${service.nom}</strong> a bien été enregistrée avec succès.</p>
-                <div style="background: #f8fafc; padding: 15px; border-radius: 6px; margin: 20px 0;">
-                    <p style="margin: 5px 0;"><strong>Date souhaitée :</strong> ${date_reservation}</p>
-                    <p style="margin: 5px 0;"><strong>Coach :</strong> ${service.coach_nom || 'Coach'}</p>
-                    <p style="margin: 5px 0;"><strong>Montant :</strong> ${Number(service.prix).toLocaleString('fr-FR')} FCFA</p>
-                    <p style="margin: 5px 0;"><strong>Téléphone de contact :</strong> ${telephone}</p>
-                </div>
-                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: center;">
-                    <div style="font-weight: 700; color: #1e40af; margin-bottom: 6px;">
-                        Paiement sécurisé via Wave Sénégal
-                    </div>
-                    <p style="font-size: 13px; color: #1e3a8a; margin: 0 0 12px;">
-                        Réglez directement votre séance en 1 clic (montant de <strong>${Number(service.prix).toLocaleString('fr-FR')} FCFA</strong> pré-rempli) :
-                    </p>
-                    <a href="${wavePaymentUrl}" style="background-color: #1da1f2; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">
-                        Payer ${Number(service.prix).toLocaleString('fr-FR')} FCFA avec Wave
-                    </a>
-                    <div style="font-size: 11.5px; color: #64748b; margin-top: 8px;">
-                        Compte Wave Business : <strong>${waveBusiness.phone}</strong>
-                    </div>
-                </div>
-                <p>Votre coach va examiner votre créneau et vous recevrez une confirmation très prochainement.</p>
-                <p style="color: #64748b; font-size: 13px;">Merci pour votre confiance sur CoachFlow.</p>
-            </div>
-        `;
-
-        await emailService.sendEmail({
-            to: email,
-            subject: `Demande de réservation reçue — ${service.nom}`,
-            html: emailContent
-        });
+        // Création de la notification interne pour le compte du client (aucun email envoyé)
+        try {
+            await notificationService.createNotification({
+                reservation_id: insertResult.insertId,
+                user_id: null,
+                client_email: email.trim(),
+                client_nom: `${prenom.trim()} ${nom.trim()}`,
+                titre: `Demande de réservation enregistrée ⏳`,
+                message: `Votre demande pour "${service.nom}" avec le coach ${service.coach_nom || 'votre coach'} pour le ${date_reservation} à ${heureVal} a été enregistrée. Elle est en attente de confirmation.`,
+                coach_nom: service.coach_nom || 'Coach',
+                date_seance: date_reservation,
+                heure_seance: heureVal,
+                service_nom: service.nom,
+                type: 'demande_enregistree'
+            });
+        } catch (notifErr) {
+            console.warn('Notice notification client :', notifErr.message);
+        }
 
         // Afficher l'écran de succès
         res.render('reservation_succes', {
@@ -246,7 +294,8 @@ app.post('/reserver/confirmer', async (req, res) => {
                 nom,
                 email,
                 telephone,
-                date_reservation
+                date_reservation,
+                heure_reservation: heureVal
             },
             service,
             waveBusiness
@@ -515,59 +564,101 @@ app.post(['/coach/reservations/:id/statut', '/admin/reservations/:id/statut'], r
     try {
         await pool.query('UPDATE reservations SET statut = ? WHERE id = ?', [statut, id]);
 
-        // Récupérer les détails pour notifier le client par email
+        // Récupérer les détails complets (avec coach, date, heure) pour notifier le client
         const [rows] = await pool.query(`
-            SELECT reservations.prenom, reservations.nom, reservations.email, reservations.date_reservation, services.nom AS service_nom
+            SELECT 
+                reservations.id AS reservation_id,
+                reservations.prenom, 
+                reservations.nom, 
+                reservations.email, 
+                reservations.telephone,
+                reservations.date_reservation,
+                reservations.heure_reservation,
+                reservations.utilisateur_id,
+                services.nom AS service_nom,
+                users.nom_complet AS coach_nom
             FROM reservations 
             JOIN services ON reservations.service_id = services.id
+            LEFT JOIN users ON services.coach_id = users.id
             WHERE reservations.id = ?
         `, [id]);
 
         let emailReport = 'none';
 
         if (rows.length > 0 && rows[0].email) {
-            const { prenom, nom, email, date_reservation, service_nom } = rows[0];
+            const { prenom, nom, email, date_reservation, heure_reservation, service_nom, coach_nom, utilisateur_id } = rows[0];
+            const coachDisplay = coach_nom || req.session.nom_complet || 'Votre coach';
+            const dateStr = (date_reservation instanceof Date) 
+                ? date_reservation.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) 
+                : date_reservation;
+            const heureStr = heure_reservation || '10:00';
+            const clientNomComplet = `${prenom || ''} ${nom || ''}`.trim();
+
             let sujet = 'Mise à jour de votre réservation';
             let message = '';
-
-            const dateStr = (date_reservation instanceof Date) ? date_reservation.toISOString().split('T')[0] : date_reservation;
 
             if (statut === 'confirme') {
                 sujet = `Votre réservation pour ${service_nom} est confirmée ✅`;
                 message = `<div style="font-family: sans-serif; max-width: 600px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
                             <h2 style="color: #10b981;">Réservation Confirmée !</h2>
                             <p>Bonjour ${prenom || ''} ${nom || ''},</p>
-                            <p>Excellente nouvelle ! Votre coach a <strong>confirmé</strong> votre séance pour <strong>${service_nom}</strong> le <strong>${dateStr}</strong>.</p>
+                            <p>Excellente nouvelle ! Votre coach <strong>${coachDisplay}</strong> a <strong>confirmé</strong> votre séance pour <strong>${service_nom}</strong> le <strong>${dateStr} à ${heureStr}</strong>.</p>
                             <p>Préparez vos questions et vos objectifs avant la séance.</p>
                             <p style="color: #64748b; font-size: 13px;">L'équipe CoachFlow</p>
                            </div>`;
+
+                // 🔔 1. ENREGISTREMENT DE LA NOTIFICATION INTERNE EN BDD POUR LE CLIENT
+                try {
+                    await notificationService.createNotification({
+                        reservation_id: id,
+                        user_id: utilisateur_id || null,
+                        client_email: email,
+                        client_nom: clientNomComplet,
+                        titre: `Réservation confirmée avec ${coachDisplay} ✅`,
+                        message: `Votre réservation pour "${service_nom}" avec le coach ${coachDisplay} a été confirmée pour le ${dateStr} à ${heureStr}.`,
+                        coach_nom: coachDisplay,
+                        date_seance: dateStr,
+                        heure_seance: heureStr,
+                        service_nom: service_nom,
+                        type: 'reservation_confirmee'
+                    });
+                } catch (notifErr) {
+                    console.error("Erreur création notification BDD :", notifErr.message);
+                }
+
             } else if (statut === 'annule') {
                 sujet = `Votre réservation pour ${service_nom} a été annulée`;
                 message = `<div style="font-family: sans-serif; max-width: 600px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
                             <h2 style="color: #ef4444;">Réservation Annulée</h2>
                             <p>Bonjour ${prenom || ''} ${nom || ''},</p>
-                            <p>Votre réservation pour <strong>${service_nom}</strong> le <strong>${dateStr}</strong> n'a pas pu être honorée et a été annulée.</p>
+                            <p>Votre réservation pour <strong>${service_nom}</strong> avec <strong>${coachDisplay}</strong> le <strong>${dateStr} à ${heureStr}</strong> n'a pas pu être honorée et a été annulée.</p>
                             <p>N'hésitez pas à choisir un autre créneau disponible sur notre catalogue.</p>
                             <p style="color: #64748b; font-size: 13px;">L'équipe CoachFlow</p>
                            </div>`;
-            }
 
-            if (message) {
-                const sendResult = await emailService.sendEmail({
-                    to: email,
-                    subject: sujet,
-                    html: message
-                });
-
-                if (sendResult.success) {
-                    emailReport = 'ok';
-                } else {
-                    emailReport = encodeURIComponent(sendResult.error || "Erreur de transmission d'email");
+                // 🔔 2. ENREGISTREMENT DE LA NOTIFICATION D'ANNULATION EN BDD
+                try {
+                    await notificationService.createNotification({
+                        reservation_id: id,
+                        user_id: utilisateur_id || null,
+                        client_email: email,
+                        client_nom: clientNomComplet,
+                        titre: `Réservation non confirmée : ${service_nom}`,
+                        message: `Votre séance pour "${service_nom}" le ${dateStr} à ${heureStr} a été annulée.`,
+                        coach_nom: coachDisplay,
+                        date_seance: dateStr,
+                        heure_seance: heureStr,
+                        service_nom: service_nom,
+                        type: 'reservation_annulee'
+                    });
+                } catch (notifErr) {
+                    console.error("Erreur création notification BDD :", notifErr.message);
                 }
             }
         }
 
-        res.redirect(`/coach/dashboard?status_updated=1&email_status=${emailReport}`);
+        // Redirection vers le dashboard avec confirmation (notification interne envoyée au client, aucun mail)
+        res.redirect('/coach/dashboard?status_updated=1');
     } catch (error) {
         console.error('Erreur lors de la mise à jour du statut :', error);
         res.status(500).send("Erreur lors de la mise à jour du statut de la réservation.");
@@ -870,6 +961,133 @@ app.post('/api/payment/wave-business/confirm', requireAuth, async (req, res) => 
         console.error("Erreur confirmation Wave Business :", err);
         res.redirect('/coach/dashboard?payment=error&reason=' + encodeURIComponent("Une erreur est survenue lors de l'enregistrement de votre transaction Wave."));
     }
+});
+
+// ==========================================
+// 5. API NOTIFICATIONS INTERNES
+// ==========================================
+
+// Récupérer les notifications et le compteur non lu
+app.get('/api/notifications', async (req, res) => {
+    try {
+        const email = req.query.email || (req.session && (req.session.email || req.session.clientEmail));
+        const userId = req.session && req.session.userId ? req.session.userId : null;
+
+        if (!email && !userId) {
+            return res.json({ success: true, unreadCount: 0, notifications: [] });
+        }
+
+        const [notifications, unreadCount] = await Promise.all([
+            notificationService.getNotifications({ email, userId, limit: 30 }),
+            notificationService.getUnreadCount({ email, userId })
+        ]);
+
+        return res.json({
+            success: true,
+            email: email || '',
+            unreadCount,
+            notifications
+        });
+    } catch (error) {
+        console.error("Erreur API GET /api/notifications :", error);
+        return res.status(500).json({ error: "Erreur serveur lors de la récupération des notifications." });
+    }
+});
+
+// Marquer une notification comme lue
+app.post('/api/notifications/:id/lire', async (req, res) => {
+    try {
+        const notifId = req.params.id;
+        const email = req.body?.email || req.query?.email || (req.session && (req.session.email || req.session.clientEmail));
+        const userId = req.session && req.session.userId ? req.session.userId : null;
+
+        await notificationService.markAsRead(notifId, { email, userId });
+        return res.json({ success: true, message: "Notification marquée comme lue." });
+    } catch (error) {
+        console.error("Erreur API POST /api/notifications/:id/lire :", error);
+        return res.status(500).json({ error: "Erreur serveur" });
+    }
+});
+
+// Marquer toutes les notifications comme lues
+app.post('/api/notifications/tout-lire', async (req, res) => {
+    try {
+        const email = req.body?.email || req.query?.email || (req.session && (req.session.email || req.session.clientEmail));
+        const userId = req.session && req.session.userId ? req.session.userId : null;
+
+        if (!email && !userId) {
+            return res.status(400).json({ error: "Email ou session requis pour marquer tout comme lu." });
+        }
+
+        await notificationService.markAllAsRead({ email, userId });
+        return res.json({ success: true, message: "Toutes les notifications ont été marquées comme lues." });
+    } catch (error) {
+        console.error("Erreur API POST /api/notifications/tout-lire :", error);
+        return res.status(500).json({ error: "Erreur serveur" });
+    }
+});
+
+// ==========================================
+// 6. ESPACE COMPTE CLIENT & RÉSERVATIONS
+// ==========================================
+
+// Afficher la page du compte client avec ses réservations et ses notifications internes
+app.get('/client/compte', async (req, res) => {
+    try {
+        const clientEmail = req.query.email || (req.session && (req.session.clientEmail || req.session.email));
+        let reservations = [];
+        let notifications = [];
+
+        if (clientEmail && clientEmail.trim() !== '') {
+            const cleanEmail = clientEmail.trim().toLowerCase();
+
+            // 1. Récupérer toutes les réservations de ce client
+            const [resRows] = await pool.query(`
+                SELECT reservations.*, services.nom AS service_nom, services.prix, services.duree_minutes, services.domaine, users.nom_complet AS coach_nom
+                FROM reservations
+                JOIN services ON reservations.service_id = services.id
+                LEFT JOIN users ON services.coach_id = users.id
+                WHERE LOWER(reservations.email) = ?
+                ORDER BY reservations.created_at DESC
+            `, [cleanEmail]);
+            reservations = resRows;
+
+            // 2. Récupérer les notifications internes de ce client
+            notifications = await notificationService.getNotifications({ email: cleanEmail, limit: 50 });
+        }
+
+        const waveBusiness = {
+            name: process.env.WAVE_BUSINESS_NAME || 'CoachFlow Sénégal',
+            url: process.env.WAVE_BUSINESS_URL || 'https://pay.wave.com/m/M_sn_knnmQCZiVi3h/c/sn/',
+            phone: process.env.WAVE_BUSINESS_PHONE || '+221 70 989 97 94',
+            number: process.env.WAVE_BUSINESS_NUMBER || '709899794'
+        };
+
+        res.render('client_compte', {
+            clientEmail: clientEmail || '',
+            reservations,
+            notifications,
+            waveBusiness
+        });
+    } catch (error) {
+        console.error("Erreur chargement compte client :", error);
+        res.status(500).send("Erreur lors du chargement de votre espace client.");
+    }
+});
+
+// Modifier ou définir l'email du client actif dans la session
+app.post('/client/compte', (req, res) => {
+    const { email } = req.body;
+    if (email && email.trim() !== '') {
+        req.session.clientEmail = email.trim();
+        return res.redirect(`/client/compte?email=${encodeURIComponent(email.trim())}`);
+    }
+    return res.redirect('/client/compte');
+});
+
+// Alias pour la page des réservations client
+app.get('/client/reservations', (req, res) => {
+    res.redirect('/client/compte');
 });
 
 // Démarrage du serveur

@@ -1,0 +1,227 @@
+<%- include('partials/header', { title: 'Mon Compte & Mes Réservations' }) %>
+
+<div class="form-container" style="max-width: 1050px; margin: 30px auto; padding: 0 16px;">
+    
+    <!-- En-tête Espace Client -->
+    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border-radius: var(--radius-lg); padding: 28px 32px; margin-bottom: 28px; box-shadow: var(--shadow-lg); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; border: 1px solid rgba(255,255,255,0.08);">
+        <div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                <span style="background: #1da1f2; color: white; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase;">
+                    <i class="fa-solid fa-user-check"></i> Espace Client
+                </span>
+                <span style="font-size: 13px; color: #94a3b8;">Suivi en direct sans email</span>
+            </div>
+            <h1 style="font-family: var(--font-heading); font-size: 26px; font-weight: 800; color: white; margin-bottom: 6px;">
+                Mon Compte & Mes Réservations
+            </h1>
+            <p style="color: #cbd5e1; font-size: 14px; margin: 0;">
+                Consultez vos confirmations de coaching et vos notifications internes en temps réel via la cloche 🔔.
+            </p>
+        </div>
+
+        <!-- Coordonnées & Choix d'email -->
+        <div style="background: rgba(255,255,255,0.06); padding: 14px 18px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.12); min-width: 280px;">
+            <div style="font-size: 11.5px; color: #94a3b8; margin-bottom: 6px;">
+                <i class="fa-regular fa-envelope"></i> Email actif du compte :
+            </div>
+            <div style="font-weight: 700; color: white; font-size: 14px; margin-bottom: 10px; word-break: break-all;">
+                <%= clientEmail || 'Aucun email défini' %>
+            </div>
+            <form action="/client/compte" method="POST" style="display: flex; gap: 6px; margin: 0;">
+                <input type="email" name="email" value="<%= clientEmail || '' %>" placeholder="Changer d'email..." required style="flex: 1; padding: 6px 10px; font-size: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: rgba(15,23,42,0.85); color: white; outline: none;">
+                <button type="submit" class="btn btn-sm" style="background: var(--primary); color: white; border: none; font-size: 11.5px; padding: 6px 12px; cursor: pointer;">
+                    OK
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- GRILLE : Notifications Internes (avec Cloche 🔔) & Liste des Réservations -->
+    <div style="display: grid; grid-template-columns: 1fr 1.35fr; gap: 24px; align-items: start;">
+        
+        <!-- COLONNE 1 : BOÎTE DE NOTIFICATIONS AVEC LA CLOCHE 🔔 -->
+        <div class="table-card" style="margin-bottom: 0;">
+            <div class="table-header" style="padding: 18px 20px; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                        <i class="fa-solid fa-bell"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 17px; font-weight: 700; color: var(--dark); margin: 0;">Notifications</h3>
+                        <p style="font-size: 12px; color: var(--text-muted); margin: 0;">
+                            <%= notifications.filter(n => !n.lu).length %> non lue(s)
+                        </p>
+                    </div>
+                </div>
+
+                <% if (notifications.filter(n => !n.lu).length > 0) { %>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="window.markAllPageNotifsRead()" style="font-size: 11.5px; padding: 5px 10px;">
+                        <i class="fa-solid fa-check-double"></i> Tout marquer lu
+                    </button>
+                <% } %>
+            </div>
+
+            <div style="max-height: 520px; overflow-y: auto;">
+                <% if (notifications.length === 0) { %>
+                    <div style="text-align: center; padding: 48px 20px; color: var(--text-muted);">
+                        <i class="fa-regular fa-bell-slash" style="font-size: 32px; color: #cbd5e1; margin-bottom: 10px; display: block;"></i>
+                        <p style="font-weight: 600; margin-bottom: 4px;">Aucune notification pour le moment.</p>
+                        <p style="font-size: 12px; color: var(--text-muted); margin: 0;">
+                            Dès que votre coach valide votre séance, vous recevrez une alerte directe ici.
+                        </p>
+                    </div>
+                <% } else { %>
+                    <div style="display: flex; flex-direction: column;">
+                        <% notifications.forEach(function(n) { %>
+                            <div style="padding: 16px 20px; border-bottom: 1px solid #f1f5f9; background: <%= n.lu ? 'white' : '#eff6ff' %>; display: flex; gap: 12px; align-items: flex-start; position: relative;">
+                                <div style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; background: <%= n.type === 'reservation_confirmee' ? '#ecfdf5' : '#fef2f2' %>; color: <%= n.type === 'reservation_confirmee' ? '#10b981' : '#ef4444' %>;">
+                                    <i class="<%= n.type === 'reservation_confirmee' ? 'fa-solid fa-circle-check' : 'fa-solid fa-bell' %>"></i>
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                                        <div style="font-weight: 700; font-size: 13.5px; color: var(--dark); margin-bottom: 4px;">
+                                            <%= n.titre %>
+                                        </div>
+                                        <% if (!n.lu) { %>
+                                            <span style="background: #3b82f6; color: white; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">Nouveau</span>
+                                        <% } %>
+                                    </div>
+                                    <p style="font-size: 13px; color: var(--text-main); margin-bottom: 8px; line-height: 1.45;">
+                                        <%= n.message %>
+                                    </p>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 10px; font-size: 11.5px; color: var(--text-muted);">
+                                        <% if (n.coach_nom) { %>
+                                            <span><i class="fa-solid fa-user-tie" style="color: var(--primary);"></i> <%= n.coach_nom %></span>
+                                        <% } %>
+                                        <% if (n.date_seance) { %>
+                                            <span style="background: #e2e8f0; color: var(--dark); font-weight: 600; padding: 2px 7px; border-radius: 4px;">
+                                                <i class="fa-regular fa-calendar"></i> <%= n.date_seance %><%= n.heure_seance ? ' à ' + n.heure_seance : '' %>
+                                            </span>
+                                        <% } %>
+                                    </div>
+                                </div>
+                                <% if (!n.lu) { %>
+                                    <button type="button" onclick="window.markNotifRead(<%= n.id %>); setTimeout(() => location.reload(), 200);" title="Marquer comme lu" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; font-size: 14px; opacity: 0.7;">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                <% } %>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- COLONNE 2 : MES RÉSERVATIONS & STATUTS -->
+        <div class="table-card" style="margin-bottom: 0;">
+            <div class="table-header" style="padding: 18px 20px; border-bottom: 1px solid var(--border);">
+                <div>
+                    <h3 style="font-size: 17px; font-weight: 700; color: var(--dark); margin: 0;">Mes Séances Réserver (<%= reservations.length %>)</h3>
+                    <p style="font-size: 12px; color: var(--text-muted); margin: 0;">
+                        Suivi en direct de vos créneaux et paiements Wave
+                    </p>
+                </div>
+                <a href="/catalogue" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-plus"></i> Réserver une offre
+                </a>
+            </div>
+
+            <% if (reservations.length === 0) { %>
+                <div style="text-align: center; padding: 48px 20px; color: var(--text-muted);">
+                    <i class="fa-solid fa-calendar-xmark" style="font-size: 32px; color: #cbd5e1; margin-bottom: 10px; display: block;"></i>
+                    <p style="font-weight: 600; margin-bottom: 6px;">Aucune réservation trouvée pour cet email.</p>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                        Découvrez les coachs et formations disponibles sur le catalogue.
+                    </p>
+                    <a href="/catalogue" class="btn btn-primary btn-sm">Explorer le catalogue</a>
+                </div>
+            <% } else { %>
+                <div style="display: flex; flex-direction: column; divide-y: 1px solid #f1f5f9;">
+                    <% reservations.forEach(function(r) { %>
+                        <div style="padding: 18px 20px; border-bottom: 1px solid #f1f5f9;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px;">
+                                <div>
+                                    <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--primary); background: var(--primary-light); padding: 2px 8px; border-radius: 4px;">
+                                        <%= r.domaine || 'Coaching' %>
+                                    </span>
+                                    <h4 style="font-size: 16px; font-weight: 700; color: var(--dark); margin: 4px 0 2px;">
+                                        <%= r.service_nom %>
+                                    </h4>
+                                    <div style="font-size: 13px; color: var(--text-muted);">
+                                        Coach : <strong style="color: var(--dark);"><%= r.coach_nom || 'Coach Certifié' %></strong>
+                                    </div>
+                                </div>
+
+                                <!-- Badge de statut -->
+                                <div>
+                                    <% if (r.statut === 'confirme') { %>
+                                        <span class="badge-status badge-confirme" style="font-size: 12px; padding: 4px 10px;">
+                                            <i class="fa-solid fa-circle-check"></i> Confirmé ✅
+                                        </span>
+                                    <% } else if (r.statut === 'annule') { %>
+                                        <span class="badge-status badge-annule" style="font-size: 12px; padding: 4px 10px;">
+                                            <i class="fa-solid fa-circle-xmark"></i> Annulé
+                                        </span>
+                                    <% } else { %>
+                                        <span class="badge-status badge-en_attente" style="font-size: 12px; padding: 4px 10px;">
+                                            <i class="fa-solid fa-clock"></i> En attente du coach
+                                        </span>
+                                    <% } %>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: #f8fafc; padding: 10px 14px; border-radius: 8px; margin-top: 10px;">
+                                <div style="display: flex; gap: 16px; font-size: 13px; color: var(--text-muted);">
+                                    <div>
+                                        <i class="fa-regular fa-calendar" style="color: var(--primary);"></i> 
+                                        <strong><%= (r.date_reservation instanceof Date) ? r.date_reservation.toLocaleDateString('fr-FR') : r.date_reservation %></strong>
+                                    </div>
+                                    <div>
+                                        <i class="fa-regular fa-clock" style="color: var(--primary);"></i> 
+                                        <strong><%= r.heure_reservation || '10:00' %></strong>
+                                    </div>
+                                    <div>
+                                        <i class="fa-solid fa-coins" style="color: var(--primary);"></i> 
+                                        <strong style="color: var(--primary);"><%= Number(r.prix).toLocaleString('fr-FR') %> FCFA</strong>
+                                    </div>
+                                </div>
+
+                                <!-- Bouton Wave direct si séance confirmée -->
+                                <% if (r.statut === 'confirme') { %>
+                                    <a href="<%= (typeof waveBusiness !== 'undefined' && waveBusiness.url ? waveBusiness.url : 'https://pay.wave.com/m/M_sn_knnmQCZiVi3h/c/sn/') + '?amount=' + r.prix %>" target="_blank" class="btn btn-sm" style="background: #1da1f2; color: white; font-weight: 700; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+                                        <i class="fa-solid fa-mobile-screen-button"></i> Payer avec Wave
+                                    </a>
+                                <% } %>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } %>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // Enregistrer l'email client pour synchronisation permanente de la cloche
+    if ('<%= clientEmail %>') {
+        localStorage.setItem('clientEmail', '<%= clientEmail %>');
+    }
+
+    async function markAllPageNotifsRead() {
+        const email = '<%= clientEmail %>';
+        try {
+            await fetch('/api/notifications/tout-lire', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email })
+            });
+            location.reload();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+    window.markAllPageNotifsRead = markAllPageNotifsRead;
+</script>
+
+<%- include('partials/footer') %>

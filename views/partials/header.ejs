@@ -17,6 +17,67 @@
 
             <div class="nav-actions">
                 <a href="/catalogue" class="nav-link"><i class="fa-solid fa-compass"></i> Explorer</a>
+                <a href="/client/compte" class="nav-link" title="Consulter mes réservations et notifications">
+                    <i class="fa-solid fa-calendar-check"></i> Mes Réservations
+                </a>
+
+                <!-- CLOCHE DE NOTIFICATIONS INTERNES -->
+                <div class="notif-wrapper" id="notif-wrapper">
+                    <button type="button" class="notif-btn" id="notif-btn" title="Mes notifications" aria-label="Notifications">
+                        <i class="fa-regular fa-bell" id="notif-bell-icon"></i>
+                        <span class="notif-badge" id="notif-badge" style="display: none;">0</span>
+                    </button>
+
+                    <!-- MENU DÉROULANT DES NOTIFICATIONS -->
+                    <div class="notif-dropdown" id="notif-dropdown">
+                        <div class="notif-dropdown-header">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-bell" style="color: var(--primary);"></i>
+                                <span style="font-weight: 700; font-size: 14.5px; color: var(--dark);">Notifications</span>
+                                <span class="notif-count-pill" id="notif-count-pill">0</span>
+                            </div>
+                            <button type="button" class="notif-mark-all" id="notif-mark-all-btn">
+                                <i class="fa-solid fa-check-double"></i> Tout marquer lu
+                            </button>
+                        </div>
+
+                        <!-- Barre récapitulative du compte / email identifié -->
+                        <div id="notif-client-bar" class="notif-client-bar">
+                            <span style="font-size: 11.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px;">
+                                <i class="fa-regular fa-circle-user"></i> <span id="notif-user-email">Recherche...</span>
+                            </span>
+                            <button type="button" id="notif-toggle-email-form" style="background: none; border: none; color: var(--primary); font-size: 11px; cursor: pointer; text-decoration: underline;">
+                                Mon email
+                            </button>
+                        </div>
+
+                        <!-- Formulaire pour renseigner / changer son email -->
+                        <div id="notif-email-form" style="display: none; padding: 10px 14px; background: #f8fafc; border-bottom: 1px solid var(--border);">
+                            <div style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 6px;">
+                                Renseignez votre email pour voir vos notifications :
+                            </div>
+                            <div style="display: flex; gap: 6px;">
+                                <input type="email" id="notif-input-email" placeholder="votre.email@exemple.com" style="flex: 1; padding: 6px 10px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; outline: none;">
+                                <button type="button" id="notif-submit-email" class="btn btn-primary btn-sm" style="padding: 6px 12px; font-size: 11.5px;">OK</button>
+                            </div>
+                        </div>
+
+                        <!-- Liste dynamique des notifications -->
+                        <div class="notif-list" id="notif-list">
+                            <div class="notif-empty" id="notif-empty-state">
+                                <i class="fa-regular fa-bell-slash" style="font-size: 26px; color: #cbd5e1; margin-bottom: 8px; display: block;"></i>
+                                <p style="margin: 0; font-weight: 500;">Aucune notification pour le moment.</p>
+                            </div>
+                        </div>
+
+                        <!-- Lien vers la page du compte client -->
+                        <div style="padding: 10px 14px; background: #f8fafc; border-top: 1px solid var(--border); text-align: center;">
+                            <a href="/client/compte" style="color: var(--primary); text-decoration: none; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-table-list"></i> Mon compte & mes réservations &rarr;
+                            </a>
+                        </div>
+                    </div>
+                </div>
                 
                 <% if (typeof user !== 'undefined' && user) { %>
                     <a href="/coach/dashboard" class="btn btn-secondary btn-sm">
@@ -39,3 +100,194 @@
             </div>
         </div>
     </nav>
+
+    <!-- Script de gestion temps réel de la cloche de notifications -->
+    <script>
+    (function() {
+        const serverUserEmail = "<%= (typeof user !== 'undefined' && user && user.email) ? user.email : '' %>";
+        const serverClientEmail = "<%= (typeof clientEmail !== 'undefined' && clientEmail) ? clientEmail : '' %>";
+        
+        function getActiveEmail() {
+            if (serverUserEmail) return serverUserEmail;
+            if (serverClientEmail) return serverClientEmail;
+            return localStorage.getItem('clientEmail') || '';
+        }
+
+        const notifBtn = document.getElementById('notif-btn');
+        const notifDropdown = document.getElementById('notif-dropdown');
+        const notifBadge = document.getElementById('notif-badge');
+        const notifBellIcon = document.getElementById('notif-bell-icon');
+        const notifCountPill = document.getElementById('notif-count-pill');
+        const notifList = document.getElementById('notif-list');
+        const notifUserEmailSpan = document.getElementById('notif-user-email');
+        const notifToggleEmailBtn = document.getElementById('notif-toggle-email-form');
+        const notifEmailForm = document.getElementById('notif-email-form');
+        const notifInputEmail = document.getElementById('notif-input-email');
+        const notifSubmitEmail = document.getElementById('notif-submit-email');
+        const notifMarkAllBtn = document.getElementById('notif-mark-all-btn');
+
+        function updateEmailDisplay() {
+            const email = getActiveEmail();
+            if (email && notifUserEmailSpan) {
+                notifUserEmailSpan.textContent = email;
+                if (notifInputEmail) notifInputEmail.value = email;
+            } else if (notifUserEmailSpan) {
+                notifUserEmailSpan.textContent = "Aucun email défini";
+            }
+        }
+
+        if (notifToggleEmailBtn) {
+            notifToggleEmailBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (notifEmailForm) {
+                    notifEmailForm.style.display = notifEmailForm.style.display === 'none' ? 'block' : 'none';
+                }
+            });
+        }
+
+        if (notifSubmitEmail) {
+            notifSubmitEmail.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (notifInputEmail) {
+                    const val = notifInputEmail.value.trim();
+                    if (val) {
+                        localStorage.setItem('clientEmail', val);
+                        updateEmailDisplay();
+                        if (notifEmailForm) notifEmailForm.style.display = 'none';
+                        loadNotifications();
+                    }
+                }
+            });
+        }
+
+        async function loadNotifications() {
+            const email = getActiveEmail();
+            updateEmailDisplay();
+
+            try {
+                const url = email ? '/api/notifications?email=' + encodeURIComponent(email) : '/api/notifications';
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const unreadCount = data.unreadCount || 0;
+                const notifications = data.notifications || [];
+
+                if (notifBadge) {
+                    if (unreadCount > 0) {
+                        notifBadge.style.display = 'flex';
+                        notifBadge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+                        if (notifCountPill) notifCountPill.textContent = unreadCount + ' non lue' + (unreadCount > 1 ? 's' : '');
+                        if (notifBellIcon) notifBellIcon.className = 'fa-solid fa-bell';
+                        if (notifBtn) notifBtn.classList.add('has-unread');
+                    } else {
+                        notifBadge.style.display = 'none';
+                        if (notifCountPill) notifCountPill.textContent = '0 non lue';
+                        if (notifBellIcon) notifBellIcon.className = 'fa-regular fa-bell';
+                        if (notifBtn) notifBtn.classList.remove('has-unread');
+                    }
+                }
+
+                if (notifList) {
+                    if (notifications.length === 0) {
+                        notifList.innerHTML = `
+                            <div class="notif-empty">
+                                <i class="fa-regular fa-bell-slash" style="font-size: 26px; color: #cbd5e1; margin-bottom: 8px; display: block;"></i>
+                                <p style="margin: 0; font-weight: 500;">Aucune notification pour le moment.</p>
+                                ${!email ? '<p style="font-size: 11.5px; color: var(--primary); margin-top: 6px; cursor: pointer;" onclick="document.getElementById(\'notif-email-form\').style.display=\'block\'">Renseigner mon email de réservation</p>' : ''}
+                            </div>
+                        `;
+                    } else {
+                        notifList.innerHTML = notifications.map(function(n) {
+                            const isConfirmed = n.type === 'reservation_confirmee';
+                            const iconClass = isConfirmed ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-exclamation';
+                            const iconColor = isConfirmed ? '#10b981' : '#ef4444';
+                            const iconBg = isConfirmed ? '#ecfdf5' : '#fef2f2';
+
+                            return `
+                                <div class="notif-item ${n.lu ? '' : 'unread'}" id="notif-item-${n.id}">
+                                    <div class="notif-icon" style="background: ${iconBg}; color: ${iconColor};">
+                                        <i class="${iconClass}"></i>
+                                    </div>
+                                    <div class="notif-body">
+                                        <div class="notif-title">${n.titre || 'Notification'}</div>
+                                        <div class="notif-message">${n.message}</div>
+                                        <div class="notif-meta">
+                                            ${n.coach_nom ? `<span><i class="fa-solid fa-user-tie"></i> ${n.coach_nom}</span>` : ''}
+                                            ${n.date_seance ? `<span class="notif-time-badge"><i class="fa-regular fa-calendar"></i> ${n.date_seance}${n.heure_seance ? ' à ' + n.heure_seance : ''}</span>` : ''}
+                                        </div>
+                                    </div>
+                                    ${!n.lu ? `
+                                        <button type="button" class="notif-read-btn" title="Marquer comme lu" onclick="window.markNotifRead(${n.id})">
+                                            <i class="fa-solid fa-check"></i>
+                                        </button>
+                                        <div class="notif-unread-dot"></div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('');
+                    }
+                }
+            } catch (err) {
+                console.error('Erreur notifications :', err);
+            }
+        }
+
+        window.checkNotifications = loadNotifications;
+
+        window.markNotifRead = async function(id) {
+            try {
+                const email = getActiveEmail();
+                await fetch('/api/notifications/' + id + '/lire', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+                loadNotifications();
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        if (notifMarkAllBtn) {
+            notifMarkAllBtn.addEventListener('click', async function(e) {
+                e.stopPropagation();
+                try {
+                    const email = getActiveEmail();
+                    await fetch('/api/notifications/tout-lire', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: email })
+                    });
+                    loadNotifications();
+                } catch (err) {
+                    console.error(err);
+                }
+            });
+        }
+
+        if (notifBtn) {
+            notifBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (notifDropdown) {
+                    const isOpen = notifDropdown.classList.contains('show');
+                    if (!isOpen) {
+                        notifDropdown.classList.add('show');
+                        loadNotifications();
+                    } else {
+                        notifDropdown.classList.remove('show');
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('click', function(e) {
+            if (notifDropdown && notifBtn && !notifDropdown.contains(e.target) && !notifBtn.contains(e.target)) {
+                notifDropdown.classList.remove('show');
+            }
+        });
+
+        loadNotifications();
+        setInterval(loadNotifications, 20000);
+    })();
+    </script>
