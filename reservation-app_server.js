@@ -74,15 +74,23 @@ function requireAdmin(req, res, next) {
     return res.redirect('/coach/connexion?redirect=/admin/dashboard');
 }
 
-// Pool de connexion MySQL / MariaDB
-const pool = mysql.createPool({
+// Pool de connexion MySQL / MariaDB (support local et bases cloud distantes pour Vercel)
+const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'reservation_db',
     waitForConnections: true,
     connectionLimit: 10
-});
+};
+
+// Activation automatique du SSL pour les connexions cloud distantes (Aiven, TiDB, Railway, Supabase)
+if (process.env.DB_SSL === 'true' || process.env.MYSQL_SSL === 'true' || (process.env.DB_HOST && !['localhost', '127.0.0.1'].includes(process.env.DB_HOST))) {
+    dbConfig.ssl = { rejectUnauthorized: false };
+}
+
+const pool = mysql.createPool(process.env.DATABASE_URL || process.env.MYSQL_URL || dbConfig);
 
 // Initialisation du service de notifications internes
 notificationService.setPool(pool);
@@ -1526,8 +1534,12 @@ app.get('/client/reservations', (req, res) => {
     res.redirect('/client/compte');
 });
 
-// Démarrage du serveur
+// Démarrage du serveur uniquement hors environnement serverless (Vercel)
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 CoachFlow SaaS actif sur : http://localhost:${PORT}/catalogue`);
-});
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`🚀 CoachFlow SaaS actif sur : http://localhost:${PORT}/catalogue`);
+    });
+}
+
+module.exports = app;
