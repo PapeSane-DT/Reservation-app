@@ -109,6 +109,68 @@
     <!-- ========================================================= -->
     <div id="tab-overview" class="admin-tab-content active">
         
+        <!-- SECTION NOTIFICATIONS AUTOMATIQUES NOUVEAUX ABONNEMENTS COACHS -->
+        <div style="background: white; border: 1.5px solid #e0f2fe; border-radius: var(--radius-md); padding: 22px; margin-bottom: 24px; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 38px; height: 38px; border-radius: 8px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 18px;">
+                        <i class="fa-solid fa-bell"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: var(--dark);">
+                            Notifications Automatiques des Nouveaux Abonnements
+                        </h3>
+                        <p style="margin: 2px 0 0; font-size: 12.5px; color: var(--text-muted);">
+                            Alertes instantanées enregistrées à chaque souscription coach avec nom, email, formule, montant et date.
+                        </p>
+                    </div>
+                </div>
+                <button type="button" onclick="switchAdminTab('tab-subscriptions')" style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 20px; cursor: pointer;">
+                    Gérer les abonnements &rarr;
+                </button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <% if (typeof subscriptionNotifs !== 'undefined' && subscriptionNotifs && subscriptionNotifs.length > 0) { %>
+                    <% subscriptionNotifs.slice(0, 4).forEach(function(n) { %>
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-sm); border-left: 4px solid #0284c7;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 34px; height: 34px; border-radius: 50%; background: #0284c7; color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">
+                                    <i class="fa-solid fa-crown"></i>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 700; font-size: 13.5px; color: var(--dark);">
+                                        <%= n.coach_nom || 'Coach' %> 
+                                        <span style="font-size: 12px; font-weight: 400; color: var(--text-muted); margin-left: 4px;">(<%= n.client_email %>)</span>
+                                    </div>
+                                    <div style="font-size: 12.5px; color: #334155; margin-top: 2px;">
+                                        <strong>Formule :</strong> <span style="color: var(--primary); font-weight: 700;">Formule Mensuelle Coach</span> • 
+                                        <strong>Montant :</strong> <strong style="color: #10b981;">5 000 FCFA</strong>
+                                    </div>
+                                    <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 2px;">
+                                        <%= n.message %>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <span class="badge badge-success" style="font-size: 11px;">
+                                    <i class="fa-solid fa-circle-check"></i> Actif (+30j)
+                                </span>
+                                <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 4px;">
+                                    <i class="fa-regular fa-clock"></i> <%= n.date_seance || new Date(n.created_at).toLocaleDateString('fr-FR') %> <%= n.heure_seance || '' %>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <div style="text-align: center; padding: 22px 16px; color: var(--text-muted); font-size: 13px; background: #f8fafc; border-radius: 8px;">
+                        <i class="fa-regular fa-bell-slash" style="font-size: 24px; color: #cbd5e1; margin-bottom: 6px; display: block;"></i>
+                        Aucun nouvel abonnement récent. Dès qu'un coach confirme son paiement Wave (5 000 FCFA), l'alerte complète s'affichera ici en temps réel.
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
         <!-- GRILLE DE 8 CARTES KPI TEMPS RÉEL -->
         <div class="admin-kpi-grid">
             
@@ -627,20 +689,27 @@
     <!-- ========================================================= -->
     <div id="tab-subscriptions" class="admin-tab-content">
         
-        <!-- BANNIÈRE TARIFAIRE -->
-        <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+        <!-- BANNIÈRE TARIFAIRE ET GESTION DES FORMULES -->
+        <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 20px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
             <div>
-                <h3 style="margin: 0 0 4px 0; font-size: 16px; color: #1e40af; font-weight: 800;">
-                    <i class="fa-solid fa-crown" style="color: #2563eb; margin-right: 6px;"></i>
-                    Tarif Abonnement Coach : 5 000 FCFA / mois
-                </h3>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="background: #2563eb; color: white; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 6px; text-transform: uppercase;">
+                        Formule Unique
+                    </span>
+                    <h3 style="margin: 0; font-size: 17px; color: #1e40af; font-weight: 800;">
+                        Formule Mensuelle Coach : 5 000 FCFA / mois
+                    </h3>
+                </div>
                 <p style="margin: 0; font-size: 13.5px; color: #3b82f6;">
-                    L'abonnement mensuel donne accès complet à la visibilité catalogue et à la réception des réservations.
+                    L'inscription du coach est gratuite. L'abonnement mensuel donne accès complet à la fixation des tarifs, à la publication au catalogue et à la réception des réservations.
                 </p>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <span style="font-size: 13px; font-weight: 700; color: #1e40af; background: white; padding: 6px 14px; border-radius: 20px; border: 1px solid #bfdbfe;">
-                    Actifs : <%= stats.activeSubscriptions %> / <%= subscriptions.length %>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <span style="font-size: 13px; font-weight: 700; color: #15803d; background: #dcfce7; padding: 6px 14px; border-radius: 20px; border: 1px solid #bbf7d0;">
+                    <i class="fa-solid fa-circle-check"></i> Actifs : <%= stats.activeSubscriptions %>
+                </span>
+                <span style="font-size: 13px; font-weight: 700; color: #b91c1c; background: #fee2e2; padding: 6px 14px; border-radius: 20px; border: 1px solid #fecaca;">
+                    <i class="fa-solid fa-circle-xmark"></i> Expirés : <%= subscriptions.length - stats.activeSubscriptions %>
                 </span>
             </div>
         </div>
@@ -652,9 +721,9 @@
             </div>
             <div class="admin-filter-controls">
                 <select id="sub-status-filter" class="admin-select">
-                    <option value="">Tous les états</option>
-                    <option value="active">Actif</option>
-                    <option value="inactive">Expiré / Inactif</option>
+                    <option value="">Tous les états (<%= subscriptions.length %>)</option>
+                    <option value="active">Abonnements Actifs (<%= stats.activeSubscriptions %>)</option>
+                    <option value="inactive">Abonnements Expirés / Inactifs (<%= subscriptions.length - stats.activeSubscriptions %>)</option>
                 </select>
                 <span id="sub-count-badge" style="font-size: 13px; font-weight: 600; color: var(--text-muted); padding-left: 6px;">
                     <%= subscriptions.length %> coach(s)
@@ -668,6 +737,7 @@
                     <thead>
                         <tr style="background: #f8fafc; border-bottom: 2px solid var(--border); color: #475569; text-align: left;">
                             <th style="padding: 14px 18px; font-weight: 700;">Coach</th>
+                            <th style="padding: 14px 18px; font-weight: 700;">Formule & Tarif</th>
                             <th style="padding: 14px 18px; font-weight: 700;">Spécialité & Contact</th>
                             <th style="padding: 14px 18px; font-weight: 700;">Statut Abonnement</th>
                             <th style="padding: 14px 18px; font-weight: 700;">Date d'Expiration</th>
@@ -676,9 +746,11 @@
                         </tr>
                     </thead>
                     <tbody id="sub-table-body">
-                        <% subscriptions.forEach(function(s) { %>
+                        <% subscriptions.forEach(function(s) { 
+                            const isRowActive = s.subscription_status === 'active' && (!s.subscription_expires_at || new Date(s.subscription_expires_at) >= new Date());
+                        %>
                             <tr class="sub-row" 
-                                data-status="<%= s.subscription_status %>" 
+                                data-status="<%= isRowActive ? 'active' : 'inactive' %>" 
                                 data-search="<%= (s.nom_complet || '') + ' ' + (s.email || '') + ' ' + (s.telephone || '') + ' ' + (s.expertise || '') %>" 
                                 style="border-bottom: 1px solid var(--border);">
                                 <td style="padding: 14px 18px;">
@@ -686,26 +758,30 @@
                                     <div style="font-size: 12px; color: var(--text-muted);"><%= s.email %></div>
                                 </td>
                                 <td style="padding: 14px 18px;">
+                                    <div style="font-weight: 700; color: var(--primary);">Formule Mensuelle</div>
+                                    <div style="font-size: 12px; color: #10b981; font-weight: 700;">5 000 FCFA / mois</div>
+                                </td>
+                                <td style="padding: 14px 18px;">
                                     <div style="font-weight: 600; color: var(--dark); font-size: 13px;"><%= s.expertise || 'Non précisé' %></div>
                                     <div style="font-size: 12px; color: var(--text-muted);"><%= s.telephone || '—' %></div>
                                 </td>
                                 <td style="padding: 14px 18px;">
-                                    <% if (s.subscription_status === 'active') { %>
-                                        <span class="badge badge-success"><i class="fa-solid fa-check"></i> Actif (5 000 FCFA)</span>
+                                    <% if (isRowActive) { %>
+                                        <span class="badge badge-success"><i class="fa-solid fa-circle-check"></i> Actif</span>
                                     <% } else { %>
-                                        <span class="badge badge-danger"><i class="fa-solid fa-xmark"></i> Inactif</span>
+                                        <span class="badge badge-danger"><i class="fa-solid fa-circle-xmark"></i> Expiré / Inactif</span>
                                     <% } %>
                                 </td>
                                 <td style="padding: 14px 18px; font-weight: 600; color: var(--dark);">
-                                    <%= s.subscription_expires_at ? new Date(s.subscription_expires_at).toLocaleDateString('fr-FR') : 'Non renseignée' %>
+                                    <%= s.subscription_expires_at ? new Date(s.subscription_expires_at).toLocaleDateString('fr-FR') : 'Non activé' %>
                                 </td>
                                 <td style="padding: 14px 18px;">
-                                    <% if (s.subscription_status === 'active' && s.jours_restants !== null) { %>
+                                    <% if (isRowActive && s.jours_restants !== null) { %>
                                         <span style="font-weight: 700; color: <%= s.jours_restants > 7 ? '#10b981' : '#f59e0b' %>;">
                                             <%= s.jours_restants %> jour(s) restant(s)
                                         </span>
                                     <% } else { %>
-                                        <span style="color: var(--text-muted); font-size: 12.5px;">Expiré ou inactif</span>
+                                        <span style="color: #ef4444; font-size: 12px; font-weight: 600;">Expiré ou en attente</span>
                                     <% } %>
                                 </td>
                                 <td style="padding: 14px 18px; text-align: center;">
@@ -713,16 +789,16 @@
                                         <!-- Prolonger +30 jours -->
                                         <form action="/admin/users/<%= s.id %>/abonnement" method="POST" style="display: inline;">
                                             <input type="hidden" name="action" value="extend30">
-                                            <button type="submit" class="btn btn-primary btn-sm" style="padding: 5px 12px; font-size: 12px;">
+                                            <button type="submit" class="btn btn-primary btn-sm" style="padding: 5px 12px; font-size: 12px;" title="Activer ou ajouter 30 jours (notification automatique déclenchée)">
                                                 <i class="fa-solid fa-circle-plus"></i> +30 Jours
                                             </button>
                                         </form>
 
                                         <!-- Désactiver si actif -->
-                                        <% if (s.subscription_status === 'active') { %>
+                                        <% if (isRowActive) { %>
                                             <form action="/admin/users/<%= s.id %>/abonnement" method="POST" style="display: inline;" onsubmit="return confirm('Suspendre l\'abonnement de ce coach ?');">
                                                 <input type="hidden" name="action" value="deactivate">
-                                                <button type="submit" class="btn btn-outline btn-sm" style="padding: 5px 10px; font-size: 12px; color: #ef4444; border-color: #fee2e2;">
+                                                <button type="submit" class="btn btn-outline btn-sm" style="padding: 5px 10px; font-size: 12px; color: #ef4444; border-color: #fee2e2;" title="Désactiver l'abonnement">
                                                     Suspendre
                                                 </button>
                                             </form>
@@ -759,7 +835,7 @@
                     Lien officiel : <a href="<%= settings.wave_business_url || 'https://pay.wave.com/m/M_sn_knnmQCZiVi3h/c/sn/' %>" target="_blank" style="color: var(--primary); word-break: break-all;"><%= settings.wave_business_url || 'https://pay.wave.com/m/M_sn_knnmQCZiVi3h/c/sn/' %></a>
                 </div>
                 <div style="font-size: 13px; color: var(--text-muted); margin-top: 3px;">
-                    Numéro Wave Business : <strong><%= settings.wave_business_phone || '+221 70 989 97 94' %></strong> • Devise : <strong>XOF (FCFA)</strong>
+                    Numéro Wave Business : <strong><%= settings.wave_business_phone || '+221 70 989 97 94' %></strong> • Tarif abonnement mensuel : <strong style="color: #10b981;">5 000 FCFA</strong>
                 </div>
             </div>
             <a href="<%= settings.wave_business_url || 'https://pay.wave.com/m/M_sn_knnmQCZiVi3h/c/sn/' %>" target="_blank" class="btn btn-secondary btn-sm">
@@ -774,10 +850,10 @@
             </div>
             <div class="admin-filter-controls">
                 <select id="tx-status-filter" class="admin-select">
-                    <option value="">Tous les statuts</option>
-                    <option value="completed">Complété (completed)</option>
-                    <option value="pending">En attente (pending)</option>
-                    <option value="failed">Échoué (failed)</option>
+                    <option value="">Tous les statuts (<%= transactions.length %>)</option>
+                    <option value="completed">Validés / Completed (<%= transactions.filter(t => t.status === 'completed').length %>)</option>
+                    <option value="pending">En attente / Pending (<%= transactions.filter(t => t.status === 'pending').length %>)</option>
+                    <option value="failed">Échoués / Failed (<%= transactions.filter(t => t.status === 'failed').length %>)</option>
                 </select>
                 <span id="tx-count-badge" style="font-size: 13px; font-weight: 600; color: var(--text-muted); padding-left: 6px;">
                     <%= transactions.length %> transaction(s)
@@ -794,9 +870,10 @@
                             <th style="padding: 14px 18px; font-weight: 700;">Référence Client</th>
                             <th style="padding: 14px 18px; font-weight: 700;">Transaction Wave ID</th>
                             <th style="padding: 14px 18px; font-weight: 700;">Coach</th>
+                            <th style="padding: 14px 18px; font-weight: 700;">Formule</th>
                             <th style="padding: 14px 18px; font-weight: 700;">Montant</th>
                             <th style="padding: 14px 18px; font-weight: 700;">Statut</th>
-                            <th style="padding: 14px 18px; font-weight: 700;">Date Création</th>
+                            <th style="padding: 14px 18px; font-weight: 700;">Date</th>
                             <th style="padding: 14px 18px; font-weight: 700; text-align: center;">Actions</th>
                         </tr>
                     </thead>
@@ -817,6 +894,9 @@
                                     <div style="font-weight: 700; color: var(--dark);"><%= tx.coach_nom || ('Coach #' + tx.coach_id) %></div>
                                     <div style="font-size: 11.5px; color: var(--text-muted);"><%= tx.coach_email || '' %></div>
                                 </td>
+                                <td style="padding: 14px 18px; font-size: 12px; font-weight: 600; color: var(--dark);">
+                                    Formule Mensuelle
+                                </td>
                                 <td style="padding: 14px 18px; font-weight: 700; color: #10b981;">
                                     <%= Number(tx.amount || 5000).toLocaleString('fr-FR') %> <%= tx.currency || 'XOF' %>
                                 </td>
@@ -830,7 +910,7 @@
                                 </td>
                                 <td style="padding: 14px 18px; text-align: center;">
                                     <% if (tx.status !== 'completed') { %>
-                                        <form action="/admin/transactions/<%= tx.id %>/valider" method="POST" style="display: inline;" onsubmit="return confirm('Valider manuellement cette transaction et créditer 30 jours au coach ?');">
+                                        <form action="/admin/transactions/<%= tx.id %>/valider" method="POST" style="display: inline;" onsubmit="return confirm('Valider manuellement cette transaction et activer 30 jours au coach ?');">
                                             <button type="submit" class="btn btn-secondary btn-sm" style="padding: 4px 10px; font-size: 11.5px;">
                                                 <i class="fa-solid fa-check-double"></i> Valider (+30j)
                                             </button>

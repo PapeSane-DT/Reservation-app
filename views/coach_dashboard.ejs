@@ -27,14 +27,23 @@
             </div>
         </div>
 
-        <div style="display: flex; gap: 10px;">
-            <a href="/coach/services/nouveau" class="btn btn-primary">
-                <i class="fa-solid fa-plus"></i> Fixer un nouveau tarif
-            </a>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <% const isCoachSubActive = coach.role === 'admin' || (coach.subscription_status === 'active' && coach.subscription_expires_at && new Date(coach.subscription_expires_at) > new Date()); %>
+            <% if (isCoachSubActive) { %>
+                <a href="/coach/services/nouveau" class="btn btn-primary">
+                    <i class="fa-solid fa-plus"></i> Fixer un nouveau tarif
+                </a>
+            <% } else { %>
+                <a href="#subscription-box" class="btn btn-primary" style="background: linear-gradient(135deg, #f59e0b, #d97706); border-color: #d97706;" title="Activez votre abonnement mensuel (5 000 FCFA) pour fixer vos tarifs et publier">
+                    <i class="fa-solid fa-lock"></i> Fixer un tarif (Abonnement requis)
+                </a>
+            <% } %>
             <a href="/catalogue" target="_blank" class="btn btn-outline">
                 <i class="fa-solid fa-eye"></i> Voir le catalogue public
             </a>
         </div>
+    </div>
+
     <!-- Alertes Statut Paiement Wave et Notification Email -->
     <div id="dashboard-alerts" style="margin-bottom: 24px;"></div>
 
@@ -43,7 +52,43 @@
         const alertsContainer = document.getElementById('dashboard-alerts');
         let htmlAlerts = '';
 
-        // 1. Alerte relative à la mise à jour et notification interne
+        // 1. Alerte d'abonnement requis pour fixer les tarifs / publier
+        if (urlParams.get('need_subscription')) {
+            htmlAlerts += `
+                <div style="background: #fffbeb; border: 1.5px solid #f59e0b; color: #92400e; padding: 16px 20px; border-radius: var(--radius-md); margin-bottom: 14px; display: flex; align-items: flex-start; justify-content: space-between; box-shadow: var(--shadow-sm);">
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <i class="fa-solid fa-lock" style="font-size: 22px; color: #f59e0b; margin-top: 2px;"></i>
+                        <div>
+                            <strong style="font-size: 15px;">Abonnement mensuel requis (5 000 FCFA/mois)</strong>
+                            <div style="font-size: 13.5px; margin-top: 4px; line-height: 1.4;">
+                                Vous devez activer votre abonnement mensuel via Wave avant de pouvoir fixer vos tarifs, publier vos prestations dans le catalogue et recevoir des réservations de clients.
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #92400e;">&times;</button>
+                </div>
+            `;
+        }
+
+        // 2. Alerte de bienvenue après inscription gratuite
+        if (urlParams.get('registered') === 'free') {
+            htmlAlerts += `
+                <div style="background: #eff6ff; border: 1.5px solid #3b82f6; color: #1e40af; padding: 16px 20px; border-radius: var(--radius-md); margin-bottom: 14px; display: flex; align-items: flex-start; justify-content: space-between; box-shadow: var(--shadow-sm);">
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <i class="fa-solid fa-sparkles" style="font-size: 22px; color: #3b82f6; margin-top: 2px;"></i>
+                        <div>
+                            <strong style="font-size: 15px;">🎉 Félicitations ! Votre profil Coach gratuit est créé.</strong>
+                            <div style="font-size: 13.5px; margin-top: 4px; line-height: 1.4;">
+                                Pour commencer à fixer vos tarifs, figurer au catalogue et recevoir des réservations, activez votre abonnement mensuel (5 000 FCFA) ci-dessous avec Wave Business.
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #1e40af;">&times;</button>
+                </div>
+            `;
+        }
+
+        // 3. Alerte relative à la mise à jour et notification interne
         if (urlParams.get('status_updated')) {
             htmlAlerts += `
                 <div style="background: #ecfdf5; border: 1.5px solid #10b981; color: #065f46; padding: 14px 18px; border-radius: var(--radius-md); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
@@ -58,7 +103,7 @@
             `;
         }
 
-        // 2. Alerte relative au paiement Wave
+        // 4. Alerte relative au paiement Wave
         if (urlParams.get('payment') === 'success') {
             const txId = urlParams.get('tx_id') || urlParams.get('ref');
             htmlAlerts += `
@@ -67,7 +112,7 @@
                         <i class="fa-solid fa-circle-check" style="font-size: 24px; color: #10b981;"></i>
                         <div>
                             <strong>Paiement Wave validé avec succès !</strong>
-                            <div style="font-size: 13.5px;">Votre abonnement mensuel a été activé pour 30 jours via Wave. ${txId ? `(Réf : <code>${txId}</code>)` : ''}</div>
+                            <div style="font-size: 13.5px;">Votre abonnement mensuel a été activé pour 30 jours via Wave. Vous pouvez désormais publier vos offres et recevoir des réservations. ${txId ? `(Réf : <code>${txId}</code>)` : ''}</div>
                         </div>
                     </div>
                     <button onclick="this.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #065f46;">&times;</button>
@@ -97,7 +142,7 @@
     </script>
 
     <!-- SECTION ABONNEMENT MENSUEL WAVE -->
-    <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border-radius: var(--radius-lg); padding: 26px 30px; margin-bottom: 32px; box-shadow: var(--shadow-lg); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px; border: 1px solid rgba(255,255,255,0.08);">
+    <div id="subscription-box" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border-radius: var(--radius-lg); padding: 26px 30px; margin-bottom: 32px; box-shadow: var(--shadow-lg); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px; border: 1px solid rgba(255,255,255,0.08);">
         <div style="max-width: 580px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                 <span style="background: #1da1f2; color: white; font-size: 11.5px; font-weight: 800; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 5px;">
@@ -211,10 +256,26 @@
                 <h3>Mes Prestations & Tarifs fixés (<%= services.length %>)</h3>
                 <p style="font-size: 13px; color: var(--text-muted);">Vous fixez librement vos prix pour chaque prestation.</p>
             </div>
-            <a href="/coach/services/nouveau" class="btn btn-secondary btn-sm">
-                <i class="fa-solid fa-plus"></i> Ajouter une offre
-            </a>
+            <% if (isCoachSubActive) { %>
+                <a href="/coach/services/nouveau" class="btn btn-secondary btn-sm">
+                    <i class="fa-solid fa-plus"></i> Ajouter une offre
+                </a>
+            <% } else { %>
+                <a href="#subscription-box" class="btn btn-secondary btn-sm" style="color: #b45309; border-color: #fde68a; background: #fffbeb;">
+                    <i class="fa-solid fa-lock"></i> Ajouter une offre (Abonnement requis)
+                </a>
+            <% } %>
         </div>
+
+        <% if (!isCoachSubActive) { %>
+            <div style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 8px; margin: 0 20px 16px 20px; font-size: 13px; color: #92400e; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fa-solid fa-circle-exclamation" style="font-size: 18px; color: #f59e0b;"></i>
+                    <span><strong>Abonnement inactif :</strong> Vos prestations ne sont actuellement pas visibles sur le catalogue public et ne peuvent pas recevoir de réservations. Activez votre formule mensuelle (5 000 FCFA) pour débloquer votre visibilité.</span>
+                </div>
+                <a href="#subscription-box" class="btn btn-primary btn-sm" style="background: #f59e0b; border-color: #f59e0b; font-size: 11.5px; padding: 4px 12px;">Activer Wave</a>
+            </div>
+        <% } %>
 
         <% if (services.length === 0) { %>
             <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">

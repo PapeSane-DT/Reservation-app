@@ -136,11 +136,12 @@ app.get('/', (req, res) => {
 app.get('/catalogue', async (req, res) => {
     const { search, domaine } = req.query;
     try {
+        // Seules les prestations des coachs ayant un abonnement actif (ou admin) sont publiées au catalogue
         let query = `
             SELECT services.*, users.nom_complet AS coach_nom, users.expertise AS coach_expertise 
             FROM services 
-            LEFT JOIN users ON services.coach_id = users.id 
-            WHERE 1=1
+            JOIN users ON services.coach_id = users.id 
+            WHERE (users.role = 'admin' OR (users.subscription_status = 'active' AND (users.subscription_expires_at IS NULL OR users.subscription_expires_at >= NOW())))
         `;
         const params = [];
 
@@ -159,12 +160,14 @@ app.get('/catalogue', async (req, res) => {
 
         const [services] = await pool.query(query, params);
 
-        // Récupérer la liste des domaines distincts pour les pilules de filtrage
+        // Récupérer la liste des domaines distincts pour les pilules de filtrage (coachs actifs uniquement)
         const [domainesRows] = await pool.query(`
-            SELECT DISTINCT domaine 
+            SELECT DISTINCT services.domaine 
             FROM services 
-            WHERE domaine IS NOT NULL AND domaine != '' 
-            ORDER BY domaine ASC
+            JOIN users ON services.coach_id = users.id 
+            WHERE (users.role = 'admin' OR (users.subscription_status = 'active' AND (users.subscription_expires_at IS NULL OR users.subscription_expires_at >= NOW())))
+              AND services.domaine IS NOT NULL AND services.domaine != '' 
+            ORDER BY services.domaine ASC
         `);
         const domaines = domainesRows.map(r => r.domaine);
 
@@ -185,7 +188,8 @@ app.get('/reserver/:id', async (req, res) => {
     const serviceId = req.params.id;
     try {
         const [rows] = await pool.query(`
-            SELECT services.*, users.nom_complet AS coach_nom, users.expertise AS coach_expertise, users.email AS coach_email
+            SELECT services.*, users.nom_complet AS coach_nom, users.expertise AS coach_expertise, users.email AS coach_email,
+                   users.role AS coach_role, users.subscription_status AS coach_sub_status, users.subscription_expires_at AS coach_sub_expires
             FROM services 
             LEFT JOIN users ON services.coach_id = users.id 
             WHERE services.id = ?
@@ -195,7 +199,20 @@ app.get('/reserver/:id', async (req, res) => {
             return res.status(404).send("Cette prestation ou formation n'existe pas.");
         }
 
-        res.render('formulaire_reservation', { service: rows[0], erreur: null });
+        const service = rows[0];
+        const isCoachActive = service.coach_role === 'admin' || (
+            service.coach_sub_status === 'active' && 
+            (!service.coach_sub_expires || new Date(service.coach_sub_expires) >= new Date())
+        );
+
+        if (!isCoachActive) {
+            return res.render('formulaire_reservation', { 
+                service, 
+                erreur: "Ce coach n'a pas encore activé son abonnement pour recevoir des réservations. Veuillez choisir un autre coach abonné disponible sur le catalogue." 
+            });
+        }
+
+        res.render('formulaire_reservation', { service, erreur: null });
     } catch (error) {
         console.error('Erreur affichage formulaire :', error);
         res.status(500).send("Erreur interne du serveur");
@@ -214,6 +231,32 @@ app.post('/reserver/confirmer', async (req, res) => {
             return res.render('formulaire_reservation', {
                 service: sRows[0] || {},
                 erreur: "Veuillez remplir obligatoirement les 4 champs (Prénom, Nom, Email, Téléphone) ainsi que la date."
+            });
+        }
+
+        // Vérification de l'abonnement du coach lié
+        const [sRows] = await pool.query(`
+            SELECT services.*, users.nom_complet AS coach_nom, users.expertise AS coach_expertise, users.email AS coach_email,
+                   users.role AS coach_role, users.subscription_status AS coach_sub_status, users.subscription_expires_at AS coach_sub_expires
+            FROM services 
+            LEFT JOIN users ON services.coach_id = users.id 
+            WHERE services.id = ?
+        `, [service_id]);
+
+        if (sRows.length === 0) {
+            return res.status(404).send("Cette prestation n'existe pas.");
+        }
+
+        const service = sRows[0];
+        const isCoachActive = service.coach_role === 'admin' || (
+            service.coach_sub_status === 'active' && 
+            (!service.coach_sub_expires || new Date(service.coach_sub_expires) >= new Date())
+        );
+
+        if (!isCoachActive) {
+            return res.render('formulaire_reservation', {
+                service,
+                erreur: "Les réservations pour ce coach sont momentanément indisponibles car son abonnement est inactif. Veuillez choisir un autre coach sur le catalogue."
             });
         }
 
@@ -248,17 +291,8 @@ app.post('/reserver/confirmer', async (req, res) => {
         req.session.clientEmail = email.trim();
         req.session.clientNom = `${prenom.trim()} ${nom.trim()}`;
 
-        // Récupérer les informations du service et du coach
-        const [serviceRows] = await pool.query(`
-            SELECT services.*, users.nom_complet AS coach_nom, users.email AS coach_email
-            FROM services 
-            LEFT JOIN users ON services.coach_id = users.id 
-            WHERE services.id = ?
-        `, [service_id]);
-        const service = serviceRows[0] || { nom: 'Prestation', prix: 0 };
-
         // Notifier le coach s'il est inscrit
-        if (service.coach_email) {
+        if (service && service.coach_email) {
             try {
                 await notificationService.createNotification({
                     reservation_id: insertResult.insertId,
@@ -364,10 +398,10 @@ app.post('/coach/inscription', async (req, res) => {
         // Hachage sécurisé du mot de passe
         const hash = await bcrypt.hash(password, 10);
 
-        // Insertion du coach
+        // Insertion du coach avec inscription gratuite (abonnement inactif par défaut)
         const [result] = await pool.query(
-            `INSERT INTO users (nom_complet, email, password, role, expertise, bio, telephone) 
-             VALUES (?, ?, ?, 'coach', ?, ?, ?)`,
+            `INSERT INTO users (nom_complet, email, password, role, expertise, bio, telephone, subscription_status, subscription_expires_at) 
+             VALUES (?, ?, ?, 'coach', ?, ?, ?, 'inactive', NULL)`,
             [nom_complet.trim(), email.trim(), hash, domaineExpertise, bio ? bio.trim() : null, telephone ? telephone.trim() : null]
         );
 
@@ -378,7 +412,8 @@ app.post('/coach/inscription', async (req, res) => {
         req.session.role = 'coach';
         req.session.expertise = domaineExpertise;
 
-        res.redirect('/coach/dashboard');
+        // Redirection vers le dashboard avec alerte d'abonnement pour publier
+        res.redirect('/coach/dashboard?registered=free');
     } catch (error) {
         console.error('Erreur inscription coach :', error);
         res.render('coach_inscription', { erreur: "Une erreur est survenue lors de l'inscription." });
@@ -583,6 +618,14 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
             totalRevenue
         };
 
+        // H. Notifications automatiques de nouveaux abonnements pour l'admin
+        const [subscriptionNotifs] = await pool.query(`
+            SELECT * FROM notifications 
+            WHERE type = 'nouvel_abonnement' 
+            ORDER BY created_at DESC 
+            LIMIT 20
+        `);
+
         res.render('admin_dashboard', {
             adminUser,
             stats,
@@ -593,6 +636,7 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
             reclamations,
             settings,
             monthlyTrends,
+            subscriptionNotifs,
             query: req.query
         });
     } catch (error) {
@@ -600,6 +644,61 @@ app.get('/admin/dashboard', requireAdmin, async (req, res) => {
         res.status(500).send("Erreur lors du chargement du tableau de bord administrateur.");
     }
 });
+
+/**
+ * FONCTION CENTRALE : Active automatiquement l'abonnement du coach (+30 jours)
+ * et envoie une notification interne automatique à tous les administrateurs
+ * avec: nom du coach, e-mail, formule, montant et date.
+ */
+async function activateCoachSubscriptionAndNotify({ coachId, amount = 5000, transactionRef = '', method = 'Wave Business' }) {
+    // 1. Activer l'abonnement pour 30 jours à partir de maintenant ou prolonger l'échéance active
+    await pool.query(`
+        UPDATE users 
+        SET subscription_status = 'active', 
+            subscription_expires_at = DATE_ADD(GREATEST(COALESCE(subscription_expires_at, NOW()), NOW()), INTERVAL 30 DAY) 
+        WHERE id = ?
+    `, [coachId]);
+
+    // 2. Récupérer les informations du coach
+    const [coachRows] = await pool.query('SELECT id, nom_complet, email, telephone, expertise FROM users WHERE id = ?', [coachId]);
+    if (coachRows.length === 0) return;
+    const coach = coachRows[0];
+
+    // 3. Notification interne automatique à TOUS les administrateurs
+    try {
+        await notificationService.notifyAdminsNewSubscription({
+            coach,
+            amount,
+            formule: 'Formule Mensuelle Coach',
+            transactionRef
+        });
+        console.log(`🔔 Notification automatique envoyée aux admins pour l'abonnement de ${coach.nom_complet || coach.email}`);
+    } catch (notifErr) {
+        console.error("Erreur notification administrateur :", notifErr.message);
+    }
+
+    // 4. Notification interne au coach
+    try {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const heureStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+        await notificationService.createNotification({
+            user_id: coach.id,
+            client_email: coach.email,
+            client_nom: coach.nom_complet || 'Coach',
+            titre: 'Abonnement CoachFlow activé avec succès ✅',
+            message: `Votre abonnement mensuel (5 000 FCFA) est validé pour 30 jours via ${method}. Vous pouvez désormais fixer vos tarifs, publier vos prestations et recevoir des réservations.`,
+            coach_nom: coach.nom_complet || 'Coach',
+            service_nom: 'Formule Mensuelle Coach (5 000 FCFA)',
+            date_seance: dateStr,
+            heure_seance: heureStr,
+            type: 'abonnement_active'
+        });
+    } catch (coachNotifErr) {
+        console.error("Erreur notification coach :", coachNotifErr.message);
+    }
+}
 
 // ACTION ADMIN : Modifier le rôle d'un utilisateur
 app.post('/admin/users/:id/role', requireAdmin, async (req, res) => {
@@ -622,12 +721,12 @@ app.post('/admin/users/:id/abonnement', requireAdmin, async (req, res) => {
     const { action } = req.body;
     try {
         if (action === 'extend30' || action === 'activate') {
-            await pool.query(`
-                UPDATE users 
-                SET subscription_status = 'active',
-                    subscription_expires_at = DATE_ADD(GREATEST(COALESCE(subscription_expires_at, NOW()), NOW()), INTERVAL 30 DAY)
-                WHERE id = ?
-            `, [id]);
+            await activateCoachSubscriptionAndNotify({
+                coachId: id,
+                amount: 5000,
+                transactionRef: 'ADMIN_RENOUV_' + Date.now(),
+                method: 'Console Administrateur'
+            });
         } else if (action === 'deactivate') {
             await pool.query(`
                 UPDATE users 
@@ -672,12 +771,12 @@ app.post('/admin/transactions/:id/valider', requireAdmin, async (req, res) => {
             `, [id]);
 
             if (tx.coach_id) {
-                await pool.query(`
-                    UPDATE users 
-                    SET subscription_status = 'active',
-                        subscription_expires_at = DATE_ADD(GREATEST(COALESCE(subscription_expires_at, NOW()), NOW()), INTERVAL 30 DAY)
-                    WHERE id = ?
-                `, [tx.coach_id]);
+                await activateCoachSubscriptionAndNotify({
+                    coachId: tx.coach_id,
+                    amount: tx.amount || 5000,
+                    transactionRef: tx.wave_transaction_id || tx.client_reference || ('WB_' + tx.id),
+                    method: 'Validation Manuelle Admin'
+                });
             }
         }
         res.redirect('/admin/dashboard?tab=payments&success=tx_validated');
@@ -807,11 +906,22 @@ app.get('/coach/dashboard', requireAuth, async (req, res) => {
     }
 });
 
-// Formulaire : Ajouter une nouvelle prestation avec fixation libre des prix
+// Formulaire : Ajouter une nouvelle prestation avec fixation libre des prix (ABONNEMENT REQUIS)
 app.get('/coach/services/nouveau', requireAuth, async (req, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [req.session.userId]);
         const coach = rows[0] || { expertise: req.session.expertise || 'Business' };
+
+        // Un coach doit obligatoirement s'abonner et payer avant de pouvoir fixer ses tarifs et publier
+        const isSubActive = coach.role === 'admin' || (
+            coach.subscription_status === 'active' && 
+            (!coach.subscription_expires_at || new Date(coach.subscription_expires_at) >= new Date())
+        );
+
+        if (!isSubActive) {
+            return res.redirect('/coach/dashboard?need_subscription=1');
+        }
+
         res.render('coach_service_nouveau', { coach, erreur: null });
     } catch (error) {
         console.error(error);
@@ -819,10 +929,22 @@ app.get('/coach/services/nouveau', requireAuth, async (req, res) => {
     }
 });
 
-// Traitement de l'ajout d'une prestation
+// Traitement de l'ajout d'une prestation (ABONNEMENT REQUIS)
 app.post('/coach/services/nouveau', requireAuth, async (req, res) => {
     const { nom, description, prix, duree_minutes, domaine } = req.body;
     const coachId = req.session.userId;
+
+    // Vérification de l'abonnement du coach
+    const [coachRows] = await pool.query('SELECT * FROM users WHERE id = ?', [coachId]);
+    const coach = coachRows[0];
+    const isSubActive = coach && (coach.role === 'admin' || (
+        coach.subscription_status === 'active' && 
+        (!coach.subscription_expires_at || new Date(coach.subscription_expires_at) >= new Date())
+    ));
+
+    if (!isSubActive) {
+        return res.redirect('/coach/dashboard?need_subscription=1');
+    }
 
     if (!nom || !prix || !duree_minutes) {
         return res.render('coach_service_nouveau', {
@@ -1130,16 +1252,15 @@ app.post('/api/payment/webhook', async (req, res) => {
                         [waveTransactionId, clientReference]
                     );
 
-                    // B. Mettre à jour l'abonnement du coach : statut 'active' + expiration = aujourd'hui + 30 jours
-                    await pool.query(
-                        `UPDATE users 
-                         SET subscription_status = 'active', 
-                             subscription_expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY) 
-                         WHERE id = ?`,
-                        [coachId]
-                    );
+                    // B. Activer l'abonnement du coach (+30 jours) et émettre la notification admin automatique
+                    await activateCoachSubscriptionAndNotify({
+                        coachId,
+                        amount: Number(transaction.amount) || 5000,
+                        transactionRef: waveTransactionId,
+                        method: 'Wave Checkout Webhook'
+                    });
 
-                    console.log(`✅ Abonnement activé avec succès pour le coach #${coachId} (+30 jours). Wave Tx: ${waveTransactionId}`);
+                    console.log(`✅ Abonnement activé avec succès pour le coach #${coachId} (+30 jours) via Webhook. Wave Tx: ${waveTransactionId}`);
 
                     // C. Notification email de confirmation au coach via emailService
                     const [coachRows] = await pool.query('SELECT nom_complet, email FROM users WHERE id = ?', [coachId]);
@@ -1184,13 +1305,14 @@ app.post('/api/payment/simulate-webhook-dev', requireAuth, async (req, res) => {
             [coachId, clientReference, fakeTxId]
         );
 
-        await pool.query(
-            `UPDATE users 
-             SET subscription_status = 'active', 
-                 subscription_expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY) 
-             WHERE id = ?`,
-            [coachId]
-        );
+        // Activer l'abonnement du coach et notifier l'administrateur
+        await activateCoachSubscriptionAndNotify({
+            coachId,
+            amount: 5000,
+            transactionRef: fakeTxId,
+            method: 'Simulation Dev Webhook'
+        });
+
         console.log(`[TEST DEV] Simulation explicite du Webhook réussie pour le coach #${coachId}`);
         res.redirect('/coach/dashboard?payment=success');
     } catch (err) {
@@ -1238,16 +1360,15 @@ app.post('/api/payment/wave-business/confirm', requireAuth, async (req, res) => 
             [coachId, clientRef, cleanTxId, paymentAmount]
         );
 
-        // Activer l'abonnement du coach pour 30 jours à compter de maintenant
-        await pool.query(
-            `UPDATE users 
-             SET subscription_status = 'active', 
-                 subscription_expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY) 
-             WHERE id = ?`,
-            [coachId]
-        );
+        // Activer l'abonnement du coach (+30 jours) et émettre la notification automatique aux admins
+        await activateCoachSubscriptionAndNotify({
+            coachId,
+            amount: paymentAmount,
+            transactionRef: cleanTxId,
+            method: 'Wave Business'
+        });
 
-        console.log(`✅ [WAVE BUSINESS] Abonnement activé (+30 jours) pour le coach #${coachId} avec la transaction Wave: ${cleanTxId}`);
+        console.log(`✅ [WAVE BUSINESS] Abonnement activé (+30 jours) et notification admin émise pour le coach #${coachId} (Tx: ${cleanTxId})`);
 
         // Envoi d'un email de confirmation au coach
         const [coachRows] = await pool.query('SELECT nom_complet, email FROM users WHERE id = ?', [coachId]);

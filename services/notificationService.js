@@ -57,6 +57,48 @@ class NotificationService {
     }
 
     /**
+     * Notifie tous les administrateurs lors d'un nouvel abonnement de coach
+     * Contient: nom du coach, son e-mail, la formule, le montant et la date.
+     */
+    async notifyAdminsNewSubscription({ coach, amount = 5000, formule = 'Formule Mensuelle Coach', transactionRef = '' }) {
+        if (!this.pool || !coach) return [];
+
+        const [admins] = await this.pool.query("SELECT id, email, nom_complet FROM users WHERE role = 'admin'");
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const heureStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const coachName = coach.nom_complet || coach.email;
+        const coachEmail = coach.email;
+        const montantFormate = `${Number(amount).toLocaleString('fr-FR')} FCFA`;
+
+        const titre = `🔔 Nouvel abonnement coach : ${coachName}`;
+        const message = `Le coach ${coachName} (${coachEmail}) a activé son abonnement "${formule}" pour un montant de ${montantFormate} le ${dateStr} à ${heureStr}.${transactionRef ? ' (Réf: ' + transactionRef + ')' : ''}`;
+
+        const notifIds = [];
+        for (const admin of admins) {
+            try {
+                const notifId = await this.createNotification({
+                    user_id: admin.id,
+                    client_email: admin.email,
+                    client_nom: admin.nom_complet || 'Administrateur',
+                    titre,
+                    message,
+                    coach_nom: coachName,
+                    service_nom: `${formule} • ${montantFormate}`,
+                    date_seance: dateStr,
+                    heure_seance: heureStr,
+                    type: 'nouvel_abonnement'
+                });
+                notifIds.push(notifId);
+            } catch (err) {
+                console.error(`Erreur notification admin #${admin.id} :`, err.message);
+            }
+        }
+
+        return notifIds;
+    }
+
+    /**
      * Récupère les notifications d'un client ou utilisateur
      */
     async getNotifications({ email, userId, limit = 20 }) {
