@@ -7,19 +7,19 @@
             <div class="avatar-big">
                 <%= (coach.nom_complet || coach.email).charAt(0).toUpperCase() %>
             </div>
-            <div>
-                <h1 style="font-family: var(--font-heading); font-size: 24px; font-weight: 800; color: var(--dark); margin-bottom: 4px;">
+            <div class="coach-profile-info">
+                <h1>
                     <%= coach.nom_complet || 'Espace Coach' %>
                 </h1>
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <div class="coach-profile-meta">
                     <span class="badge-domain domain-business">
                         <i class="fa-solid fa-certificate"></i> Expertise : <%= coach.expertise || 'Expert' %>
                     </span>
-                    <span style="font-size: 13.5px; color: var(--text-muted);">
+                    <span class="coach-email-pill">
                         <i class="fa-regular fa-envelope"></i> <%= coach.email %>
                     </span>
                     <% if (coach.telephone) { %>
-                        <span style="font-size: 13.5px; color: var(--text-muted);">
+                        <span class="coach-phone-pill">
                             <i class="fa-solid fa-phone"></i> <%= coach.telephone %>
                         </span>
                     <% } %>
@@ -27,14 +27,14 @@
             </div>
         </div>
 
-        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <div class="dashboard-header-actions">
             <% const isCoachSubActive = coach.role === 'admin' || (coach.subscription_status === 'active' && coach.subscription_expires_at && new Date(coach.subscription_expires_at) > new Date()); %>
             <% if (isCoachSubActive) { %>
                 <a href="/coach/services/nouveau" class="btn btn-primary">
                     <i class="fa-solid fa-plus"></i> Fixer un nouveau tarif
                 </a>
             <% } else { %>
-                <a href="#subscription-box" class="btn btn-primary" style="background: linear-gradient(135deg, #f59e0b, #d97706); border-color: #d97706;" title="Activez votre abonnement mensuel (5 000 FCFA) pour fixer vos tarifs et publier">
+                <a href="#subscription-box" class="btn btn-primary btn-sub-warning" title="Activez votre abonnement mensuel (5 000 FCFA) pour fixer vos tarifs et publier">
                     <i class="fa-solid fa-lock"></i> Fixer un tarif (Abonnement requis)
                 </a>
             <% } %>
@@ -142,38 +142,38 @@
     </script>
 
     <!-- SECTION ABONNEMENT MENSUEL WAVE -->
-    <div id="subscription-box" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border-radius: var(--radius-lg); padding: 26px 30px; margin-bottom: 32px; box-shadow: var(--shadow-lg); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px; border: 1px solid rgba(255,255,255,0.08);">
-        <div style="max-width: 580px;">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                <span style="background: #1da1f2; color: white; font-size: 11.5px; font-weight: 800; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 5px;">
+    <div id="subscription-box" class="subscription-card-box">
+        <div class="sub-card-left">
+            <div class="sub-badges-wrapper">
+                <span class="badge-wave-sn">
                     <i class="fa-solid fa-wave-square"></i> Wave Sénégal
                 </span>
                 <% if (coach.subscription_status === 'active' && coach.subscription_expires_at && new Date(coach.subscription_expires_at) > new Date()) { %>
-                    <span style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; border: 1px solid rgba(16, 185, 129, 0.4);">
+                    <span class="badge-sub-status badge-sub-active">
                         <i class="fa-solid fa-circle-check"></i> Abonnement Actif
                     </span>
                 <% } else { %>
-                    <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; border: 1px solid rgba(245, 158, 11, 0.4);">
+                    <span class="badge-sub-status badge-sub-inactive">
                         <i class="fa-solid fa-clock"></i> Abonnement Inactif / Expiré
                     </span>
                 <% } %>
             </div>
 
-            <h3 style="font-family: var(--font-heading); font-size: 22px; font-weight: 800; margin-bottom: 6px;">
+            <h3 class="sub-card-title">
                 Abonnement Mensuel Prestataire (5 000 FCFA / mois)
             </h3>
 
             <% if (coach.subscription_status === 'active' && coach.subscription_expires_at && new Date(coach.subscription_expires_at) > new Date()) { %>
-                <p style="color: #cbd5e1; font-size: 14px; margin: 0 0 12px;">
+                <p class="sub-card-desc">
                     Votre compte dispose de tous les accès pros. Date d'échéance : <strong style="color: white;"><%= new Date(coach.subscription_expires_at).toLocaleDateString('fr-FR') %></strong>. Vous pouvez prolonger de 30 jours à tout moment.
                 </p>
             <% } else { %>
-                <p style="color: #94a3b8; font-size: 14px; margin: 0 0 12px;">
+                <p class="sub-card-desc">
                     Activez votre abonnement mensuel de <strong>5 000 FCFA</strong> pour publier vos offres et recevoir des réservations d'élèves en illimité.
                 </p>
             <% } %>
 
-            <div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: #94a3b8; background: rgba(255,255,255,0.04); padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); width: fit-content;">
+            <div class="sub-wave-info-pill">
                 <div>
                     <i class="fa-solid fa-phone" style="color: #1da1f2;"></i> Numéro Wave : <strong style="color: white;"><%= waveBusiness.phone %></strong>
                 </div>
@@ -183,39 +183,39 @@
             </div>
         </div>
 
-        <div style="width: 100%; max-width: 380px;">
+        <div class="sub-card-right">
             <!-- 1. Bouton qui ouvre directement Wave sur le téléphone avec montant pré-rempli -->
-            <a href="<%= (waveBusiness && waveBusiness.paymentUrl) ? waveBusiness.paymentUrl : 'https://pay.wave.com/m/M_sn_knnmQCZiVi3h/c/sn/?amount=5000' %>" target="_blank" class="btn btn-lg" style="background: #1da1f2; color: white; text-decoration: none; border: none; box-shadow: 0 4px 14px rgba(29, 161, 242, 0.4); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: transform 0.2s ease; width: 100%; padding: 14px 20px; border-radius: var(--radius-md); box-sizing: border-box;">
-                <i class="fa-solid fa-mobile-screen-button" style="font-size: 20px;"></i>
+            <a href="<%= (waveBusiness && waveBusiness.paymentUrl) ? waveBusiness.paymentUrl : 'https://pay.wave.com/m/M_sn_knnmQCZiVi3h/c/sn/?amount=5000' %>" target="_blank" class="btn btn-wave-pay">
+                <i class="fa-solid fa-mobile-screen-button"></i>
                 <span>
                     <%= (coach.subscription_status === 'active' && coach.subscription_expires_at && new Date(coach.subscription_expires_at) > new Date()) ? 'Prolonger avec Wave (+30 j)' : 'Payer 5 000 FCFA avec Wave' %>
                 </span>
             </a>
-            <div style="font-size: 11.5px; color: #94a3b8; text-align: center; margin-top: 8px;">
+            <div class="sub-wave-open-note">
                 <i class="fa-solid fa-bolt" style="color: #38bdf8;"></i> Ouvre directement l'application Wave (5 000 FCFA pré-remplis)
             </div>
 
             <!-- 2. Formulaire pour valider la transaction et activer l'abonnement -->
-            <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 12px 14px; margin-top: 14px;">
-                <div style="font-size: 12px; font-weight: 700; color: #e2e8f0; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+            <div class="sub-wave-verify-box">
+                <div class="sub-wave-verify-title">
                     <i class="fa-solid fa-check-double" style="color: #34d399;"></i> Déjà validé sur votre appli Wave ?
                 </div>
-                <form action="/api/payment/wave-business/confirm" method="POST" style="display: flex; gap: 8px; margin: 0;">
+                <form class="sub-wave-verify-form" action="/api/payment/wave-business/confirm" method="POST">
                     <input type="hidden" name="amount" value="<%= (waveBusiness && waveBusiness.amount) ? waveBusiness.amount : 5000 %>">
-                    <input type="text" name="wave_transaction_id" placeholder="ID transaction / Reçu Wave" required style="flex: 1; min-width: 140px; background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 8px 10px; border-radius: 6px; font-size: 12.5px; outline: none;">
-                    <button type="submit" style="background: #10b981; color: white; border: none; font-weight: 700; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; white-space: nowrap;">
+                    <input type="text" name="wave_transaction_id" placeholder="ID transaction / Reçu Wave" required class="sub-wave-input">
+                    <button type="submit" class="sub-wave-submit-btn">
                         Activer (+30j)
                     </button>
                 </form>
             </div>
             
             <!-- Outil Développeur Local -->
-            <div style="margin-top: 10px; text-align: center;">
+            <div class="sub-wave-dev-box">
                 <details style="font-size: 11.5px; color: #94a3b8;">
                     <summary style="cursor: pointer; opacity: 0.75;"><i class="fa-solid fa-code"></i> Outil test développeur</summary>
                     <div style="background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 6px; margin-top: 6px; border: 1px dashed rgba(255,255,255,0.2);">
                         <form action="/api/payment/simulate-webhook-dev" method="POST" style="margin: 0;">
-                            <button type="submit" style="background: none; border: 1px solid rgba(255,255,255,0.3); color: #cbd5e1; font-size: 11px; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                            <button type="submit" style="background: none; border: 1px solid rgba(255,255,255,0.3); color: #cbd5e1; font-size: 11px; padding: 4px 8px; border-radius: 4px; cursor: pointer; width: 100%;">
                                 Simuler manuellement le Webhook Wave (Test local)
                             </button>
                         </form>

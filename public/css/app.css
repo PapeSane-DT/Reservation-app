@@ -48,6 +48,8 @@ html {
   -webkit-text-size-adjust: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 *, *::before, *::after {
@@ -67,7 +69,7 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   position: relative;
   -webkit-tap-highlight-color: transparent;
 }
@@ -824,9 +826,11 @@ body.modal-open {
 
 /* DASHBOARD */
 .dashboard-container {
+  width: 100%;
   max-width: 1200px;
   margin: 36px auto 80px;
   padding: 0 24px;
+  box-sizing: border-box;
 }
 
 .dashboard-header {
@@ -841,12 +845,59 @@ body.modal-open {
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .coach-profile-summary {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
+}
+
+.coach-profile-info {
+  min-width: 0;
+}
+
+.coach-profile-info h1 {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--dark);
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.coach-profile-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+.coach-email-pill,
+.coach-phone-pill {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dashboard-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dashboard-header-actions .btn-sub-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-color: #d97706;
+  color: white;
 }
 
 .coach-profile-summary .avatar-big {
@@ -860,6 +911,207 @@ body.modal-open {
   justify-content: center;
   font-size: 22px;
   font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* CARTE ABONNEMENT WAVE (COACH & PRESTATAIRE) */
+.subscription-card-box {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: white;
+  border-radius: var(--radius-lg);
+  padding: 26px 30px;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.sub-card-left {
+  flex: 1 1 340px;
+  max-width: 580px;
+  min-width: 0;
+}
+
+.sub-badges-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.badge-wave-sn {
+  background: #1da1f2;
+  color: white;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.badge-sub-status {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.badge-sub-active {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.badge-sub-inactive {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.sub-card-title {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.sub-card-desc {
+  font-size: 14px;
+  margin: 0 0 12px;
+  line-height: 1.5;
+  color: #cbd5e1;
+  word-break: break-word;
+}
+
+.sub-wave-info-pill {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 13px;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.sub-card-right {
+  width: 100%;
+  max-width: 380px;
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.btn-wave-pay {
+  background: #1da1f2;
+  color: white !important;
+  text-decoration: none;
+  border: none;
+  box-shadow: 0 4px 14px rgba(29, 161, 242, 0.4);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.btn-wave-pay:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(29, 161, 242, 0.5);
+  color: white;
+}
+
+.sub-wave-open-note {
+  font-size: 11.5px;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 8px;
+}
+
+.sub-wave-verify-box {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 14px;
+  box-sizing: border-box;
+}
+
+.sub-wave-verify-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sub-wave-verify-form {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sub-wave-input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: white;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.sub-wave-submit-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sub-wave-dev-box {
+  margin-top: 10px;
+  text-align: center;
 }
 
 .stats-grid {
@@ -1001,6 +1253,23 @@ tr:hover td {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+
+.client-account-header {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: white;
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  margin-bottom: 28px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .client-account-grid {
@@ -1735,6 +2004,13 @@ tr:hover td {
 }
 
 @media (max-width: 900px) {
+  .client-account-header {
+    padding: 18px 14px !important;
+    gap: 16px !important;
+    margin-bottom: 20px !important;
+    border-radius: var(--radius-md) !important;
+  }
+
   .client-account-grid {
     grid-template-columns: 1fr !important;
     gap: 20px;
@@ -1857,32 +2133,207 @@ tr:hover td {
 
   /* TABLEAUX DE BORD (COACH & ADMIN) */
   .dashboard-container {
-    margin: 16px auto 60px;
-    padding: 0 14px;
+    margin: 14px auto 70px !important;
+    padding: 0 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
   }
+
   .dashboard-header {
-    padding: 16px 18px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    padding: 16px 14px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
-  .dashboard-header .btn {
-    width: 100%;
+
+  .coach-profile-summary {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .coach-profile-summary .avatar-big {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 20px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .coach-profile-info {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .coach-profile-info h1 {
+    font-size: 20px !important;
+    line-height: 1.25 !important;
+    word-break: break-word !important;
+    margin-bottom: 4px !important;
+  }
+
+  .coach-profile-meta {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+    width: 100% !important;
+  }
+
+  .coach-profile-meta .badge-domain {
+    font-size: 11px !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    line-height: 1.3 !important;
+  }
+
+  .coach-email-pill,
+  .coach-phone-pill {
+    font-size: 12px !important;
+    word-break: break-all !important;
+  }
+
+  .dashboard-header-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .dashboard-header-actions .btn {
+    width: 100% !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    text-align: center !important;
+    padding: 12px 14px !important;
+    font-size: 13.5px !important;
+    box-sizing: border-box !important;
+    line-height: 1.35 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  /* CARTE ABONNEMENT WAVE SUR MOBILE */
+  .subscription-card-box {
+    padding: 18px 14px !important;
+    gap: 18px !important;
+    margin-bottom: 22px !important;
+    border-radius: var(--radius-md) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sub-card-left,
+  .sub-card-right {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .sub-card-title {
+    font-size: 17.5px !important;
+    line-height: 1.3 !important;
+    word-break: break-word !important;
+    margin-bottom: 8px !important;
+  }
+
+  .sub-card-desc {
+    font-size: 13px !important;
+    line-height: 1.45 !important;
+    word-break: break-word !important;
+  }
+
+  .sub-wave-info-pill {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    width: 100% !important;
+    padding: 10px 12px !important;
+    font-size: 12.5px !important;
+    box-sizing: border-box !important;
+  }
+
+  .sub-wave-info-pill div {
+    word-break: break-word !important;
+  }
+
+  .btn-wave-pay {
+    padding: 12px 14px !important;
+    font-size: 14.5px !important;
+    width: 100% !important;
+    white-space: normal !important;
+    line-height: 1.3 !important;
+  }
+
+  .sub-wave-verify-box {
+    padding: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sub-wave-verify-form {
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .sub-wave-input {
+    width: 100% !important;
+    font-size: 14px !important;
+    padding: 10px 12px !important;
+  }
+
+  .sub-wave-submit-btn {
+    width: 100% !important;
+    font-size: 13.5px !important;
+    padding: 10px 12px !important;
+    text-align: center !important;
   }
 
   .stats-grid,
   .admin-kpi-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 12px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
     margin-bottom: 20px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
+
   .stat-card,
   .admin-kpi-card {
-    padding: 14px 14px;
+    padding: 12px 10px !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
+
   .stat-card .stat-value,
   .admin-kpi-value {
-    font-size: 22px;
+    font-size: 18px !important;
+    word-break: break-word !important;
+    line-height: 1.2 !important;
+  }
+
+  .stat-card .stat-title {
+    font-size: 11px !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  .stat-card .stat-sub {
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
   }
 
   /* ONGLETS ADMIN AVEC DÉFILEMENT TACTILE */
