@@ -48,7 +48,7 @@
         <form action="/reserver/confirmer" method="POST">
             <input type="hidden" name="service_id" value="<%= service.id %>">
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="responsive-grid-2">
                 <!-- 1. PRÉNOM (Obligatoire) -->
                 <div class="form-group">
                     <label for="prenom">1. Prénom <span class="required">*</span></label>
@@ -77,7 +77,7 @@
             </div>
 
             <!-- Choix du créneau (Date & Heure) -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="responsive-grid-2">
                 <div class="form-group">
                     <label for="date_reservation">Date souhaitée <span class="required">*</span></label>
                     <input type="date" id="date_reservation" name="date_reservation" required min="<%= new Date().toISOString().split('T')[0] %>">

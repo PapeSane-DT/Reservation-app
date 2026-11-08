@@ -2,7 +2,13 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="theme-color" content="#4361ee">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
     <title><%= typeof title !== 'undefined' ? title + ' — ' : '' %>CoachFlow | Réservation Coaching & Formation</title>
     <link rel="stylesheet" href="/css/app.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -15,68 +21,19 @@
                 <span>Coach<span class="highlight">Flow</span></span>
             </a>
 
-            <div class="nav-actions">
+            <!-- ACTIONS BUREAU (Desktop) -->
+            <div class="nav-actions desktop-nav-actions">
                 <a href="/catalogue" class="nav-link"><i class="fa-solid fa-compass"></i> Explorer</a>
                 <a href="/client/compte" class="nav-link" title="Consulter mes réservations et notifications">
                     <i class="fa-solid fa-calendar-check"></i> Mes Réservations
                 </a>
 
-                <!-- CLOCHE DE NOTIFICATIONS INTERNES -->
+                <!-- CLOCHE DE NOTIFICATIONS INTERNES (DESKTOP) -->
                 <div class="notif-wrapper" id="notif-wrapper">
                     <button type="button" class="notif-btn" id="notif-btn" title="Mes notifications" aria-label="Notifications">
                         <i class="fa-regular fa-bell" id="notif-bell-icon"></i>
                         <span class="notif-badge" id="notif-badge" style="display: none;">0</span>
                     </button>
-
-                    <!-- MENU DÉROULANT DES NOTIFICATIONS -->
-                    <div class="notif-dropdown" id="notif-dropdown">
-                        <div class="notif-dropdown-header">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <i class="fa-solid fa-bell" style="color: var(--primary);"></i>
-                                <span style="font-weight: 700; font-size: 14.5px; color: var(--dark);">Notifications</span>
-                                <span class="notif-count-pill" id="notif-count-pill">0</span>
-                            </div>
-                            <button type="button" class="notif-mark-all" id="notif-mark-all-btn">
-                                <i class="fa-solid fa-check-double"></i> Tout marquer lu
-                            </button>
-                        </div>
-
-                        <!-- Barre récapitulative du compte / email identifié -->
-                        <div id="notif-client-bar" class="notif-client-bar">
-                            <span style="font-size: 11.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px;">
-                                <i class="fa-regular fa-circle-user"></i> <span id="notif-user-email">Recherche...</span>
-                            </span>
-                            <button type="button" id="notif-toggle-email-form" style="background: none; border: none; color: var(--primary); font-size: 11px; cursor: pointer; text-decoration: underline;">
-                                Mon email
-                            </button>
-                        </div>
-
-                        <!-- Formulaire pour renseigner / changer son email -->
-                        <div id="notif-email-form" style="display: none; padding: 10px 14px; background: #f8fafc; border-bottom: 1px solid var(--border);">
-                            <div style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 6px;">
-                                Renseignez votre email pour voir vos notifications :
-                            </div>
-                            <div style="display: flex; gap: 6px;">
-                                <input type="email" id="notif-input-email" placeholder="votre.email@exemple.com" style="flex: 1; padding: 6px 10px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; outline: none;">
-                                <button type="button" id="notif-submit-email" class="btn btn-primary btn-sm" style="padding: 6px 12px; font-size: 11.5px;">OK</button>
-                            </div>
-                        </div>
-
-                        <!-- Liste dynamique des notifications -->
-                        <div class="notif-list" id="notif-list">
-                            <div class="notif-empty" id="notif-empty-state">
-                                <i class="fa-regular fa-bell-slash" style="font-size: 26px; color: #cbd5e1; margin-bottom: 8px; display: block;"></i>
-                                <p style="margin: 0; font-weight: 500;">Aucune notification pour le moment.</p>
-                            </div>
-                        </div>
-
-                        <!-- Lien vers la page du compte client -->
-                        <div style="padding: 10px 14px; background: #f8fafc; border-top: 1px solid var(--border); text-align: center;">
-                            <a href="/client/compte" style="color: var(--primary); text-decoration: none; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                                <i class="fa-solid fa-table-list"></i> Mon compte & mes réservations &rarr;
-                            </a>
-                        </div>
-                    </div>
                 </div>
                 
                 <% if (typeof user !== 'undefined' && user) { %>
@@ -103,10 +60,196 @@
                     </a>
                 <% } %>
             </div>
+
+            <!-- CONTRÔLES EN-TÊTE MOBILE (Android / Smartphones) -->
+            <div class="mobile-nav-controls">
+                <button type="button" class="notif-btn mobile-notif-btn" id="mobile-top-notif-btn" title="Notifications" aria-label="Notifications">
+                    <i class="fa-regular fa-bell" id="mobile-notif-bell-icon"></i>
+                    <span class="notif-badge" id="mobile-top-notif-badge" style="display: none;">0</span>
+                </button>
+                
+                <button type="button" class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Menu principal">
+                    <i class="fa-solid fa-bars" id="toggle-icon-bars"></i>
+                    <i class="fa-solid fa-xmark" id="toggle-icon-close" style="display: none;"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- MENU DÉROULANT DES NOTIFICATIONS (DESKTOP & MOBILE BOTTOM-SHEET) -->
+        <div class="notif-dropdown" id="notif-dropdown">
+            <div class="notif-mobile-handle"></div>
+            <div class="notif-dropdown-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-bell" style="color: var(--primary);"></i>
+                    <span style="font-weight: 700; font-size: 14.5px; color: var(--dark);">Notifications</span>
+                    <span class="notif-count-pill" id="notif-count-pill">0</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <button type="button" class="notif-mark-all" id="notif-mark-all-btn">
+                        <i class="fa-solid fa-check-double"></i> Tout lire
+                    </button>
+                    <button type="button" class="notif-close-mobile-btn" id="notif-close-mobile-btn" aria-label="Fermer les notifications">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Barre récapitulative du compte / email identifié -->
+            <div id="notif-client-bar" class="notif-client-bar">
+                <span style="font-size: 11.5px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px;">
+                    <i class="fa-regular fa-circle-user"></i> <span id="notif-user-email">Recherche...</span>
+                </span>
+                <button type="button" id="notif-toggle-email-form" style="background: none; border: none; color: var(--primary); font-size: 11px; cursor: pointer; text-decoration: underline;">
+                    Mon email
+                </button>
+            </div>
+
+            <!-- Formulaire pour renseigner / changer son email -->
+            <div id="notif-email-form" style="display: none; padding: 10px 14px; background: #f8fafc; border-bottom: 1px solid var(--border);">
+                <div style="font-size: 11.5px; color: var(--text-muted); margin-bottom: 6px;">
+                    Renseignez votre email pour voir vos notifications :
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <input type="email" id="notif-input-email" placeholder="votre.email@exemple.com" style="flex: 1; padding: 8px 10px; font-size: 14px; border: 1px solid var(--border); border-radius: 6px; outline: none;">
+                    <button type="button" id="notif-submit-email" class="btn btn-primary btn-sm" style="padding: 8px 14px; font-size: 12px;">OK</button>
+                </div>
+            </div>
+
+            <!-- Liste dynamique des notifications -->
+            <div class="notif-list" id="notif-list">
+                <div class="notif-empty" id="notif-empty-state">
+                    <i class="fa-regular fa-bell-slash" style="font-size: 26px; color: #cbd5e1; margin-bottom: 8px; display: block;"></i>
+                    <p style="margin: 0; font-weight: 500;">Aucune notification pour le moment.</p>
+                </div>
+            </div>
+
+            <!-- Lien vers la page du compte client -->
+            <div style="padding: 12px 14px; background: #f8fafc; border-top: 1px solid var(--border); text-align: center;">
+                <a href="/client/compte" style="color: var(--primary); text-decoration: none; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-table-list"></i> Mon compte & mes réservations &rarr;
+                </a>
+            </div>
+        </div>
+
+        <!-- TIROIR MENU MOBILE (Slide down drawer) -->
+        <div class="mobile-nav-drawer" id="mobile-nav-drawer">
+            <div class="mobile-drawer-content">
+                <a href="/catalogue" class="mobile-nav-link">
+                    <div class="mobile-nav-icon"><i class="fa-solid fa-compass"></i></div>
+                    <div class="mobile-nav-texts">
+                        <div class="mobile-nav-title">Explorer le catalogue</div>
+                        <div class="mobile-nav-desc">Toutes les offres et formations de coaching</div>
+                    </div>
+                </a>
+
+                <a href="/client/compte" class="mobile-nav-link">
+                    <div class="mobile-nav-icon"><i class="fa-solid fa-calendar-check"></i></div>
+                    <div class="mobile-nav-texts">
+                        <div class="mobile-nav-title">Mes Réservations</div>
+                        <div class="mobile-nav-desc">Consulter mes séances et statuts</div>
+                    </div>
+                </a>
+
+                <div class="mobile-drawer-divider"></div>
+
+                <% if (typeof user !== 'undefined' && user) { %>
+                    <div class="mobile-user-card">
+                        <div class="mobile-user-avatar">
+                            <%= (user.nom_complet || user.email).charAt(0).toUpperCase() %>
+                        </div>
+                        <div class="mobile-user-info">
+                            <strong><%= user.nom_complet || user.email %></strong>
+                            <span class="badge-role-pill"><%= user.role === 'admin' ? 'Super Admin' : 'Coach Certifié' %></span>
+                        </div>
+                    </div>
+
+                    <% if (user.role === 'admin') { %>
+                        <a href="/admin/dashboard" class="mobile-nav-link special-admin">
+                            <div class="mobile-nav-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                            <div class="mobile-nav-texts">
+                                <div class="mobile-nav-title">Console Administrateur</div>
+                                <div class="mobile-nav-desc">Supervision générale de la plateforme</div>
+                            </div>
+                        </a>
+                    <% } %>
+
+                    <a href="/coach/dashboard" class="mobile-nav-link">
+                        <div class="mobile-nav-icon"><i class="fa-solid fa-chart-line"></i></div>
+                        <div class="mobile-nav-texts">
+                            <div class="mobile-nav-title">Tableau de bord Coach</div>
+                            <div class="mobile-nav-desc">Mes élèves, prestations et revenus Wave</div>
+                        </div>
+                    </a>
+
+                    <a href="/coach/services/nouveau" class="mobile-nav-link">
+                        <div class="mobile-nav-icon"><i class="fa-solid fa-plus-circle"></i></div>
+                        <div class="mobile-nav-texts">
+                            <div class="mobile-nav-title">Nouveau tarif / prestation</div>
+                            <div class="mobile-nav-desc">Publier une formation au catalogue</div>
+                        </div>
+                    </a>
+
+                    <a href="/coach/deconnexion" class="mobile-nav-link danger">
+                        <div class="mobile-nav-icon"><i class="fa-solid fa-right-from-bracket"></i></div>
+                        <div class="mobile-nav-texts">
+                            <div class="mobile-nav-title">Se déconnecter</div>
+                        </div>
+                    </a>
+                <% } else { %>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+                        <a href="/coach/inscription" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 13px;">
+                            <i class="fa-solid fa-user-plus"></i> Devenir Coach (Gratuit)
+                        </a>
+                        <a href="/coach/connexion" class="btn btn-outline" style="width: 100%; justify-content: center; padding: 13px;">
+                            <i class="fa-solid fa-arrow-right-to-bracket"></i> Connexion Espace Coach
+                        </a>
+                    </div>
+                <% } %>
+            </div>
         </div>
     </nav>
 
-    <!-- Script de gestion temps réel de la cloche de notifications -->
+    <!-- FOND SOMBRE FLOU (Backdrop) -->
+    <div class="mobile-backdrop" id="mobile-backdrop"></div>
+
+    <!-- BARRE DE NAVIGATION NATIVE EN BAS DE L'ÉCRAN (Android & Mobile) -->
+    <nav class="mobile-bottom-bar" id="mobile-bottom-bar" aria-label="Navigation rapide mobile">
+        <a href="/catalogue" class="bottom-bar-item" id="bottom-bar-link-catalogue">
+            <i class="fa-solid fa-compass"></i>
+            <span>Explorer</span>
+        </a>
+        <a href="/client/compte" class="bottom-bar-item" id="bottom-bar-link-client">
+            <i class="fa-solid fa-calendar-check"></i>
+            <span>Séances</span>
+        </a>
+        <button type="button" class="bottom-bar-item" id="bottom-bar-notif-btn" aria-label="Mes notifications">
+            <div style="position: relative; display: inline-flex; align-items: center; justify-content: center;">
+                <i class="fa-regular fa-bell" id="bottom-bar-notif-icon"></i>
+                <span class="bottom-bar-badge" id="bottom-bar-notif-badge" style="display: none;">0</span>
+            </div>
+            <span>Alertes</span>
+        </button>
+        <% if (typeof user !== 'undefined' && user) { %>
+            <% if (user.role === 'admin') { %>
+                <a href="/admin/dashboard" class="bottom-bar-item" id="bottom-bar-link-admin">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Admin</span>
+                </a>
+            <% } else { %>
+                <a href="/coach/dashboard" class="bottom-bar-item" id="bottom-bar-link-coach">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Coach</span>
+                </a>
+            <% } %>
+        <% } else { %>
+            <a href="/coach/connexion" class="bottom-bar-item" id="bottom-bar-link-pro">
+                <i class="fa-solid fa-circle-user"></i>
+                <span>Espace Pro</span>
+            </a>
+        <% } %>
+    </nav>
+
+    <!-- Script de gestion responsive et temps réel (Notifications & Menu Mobile) -->
     <script>
     (function() {
         const serverUserEmail = "<%= (typeof user !== 'undefined' && user && user.email) ? user.email : '' %>";
@@ -118,10 +261,17 @@
             return localStorage.getItem('clientEmail') || '';
         }
 
+        // Éléments Notifications
         const notifBtn = document.getElementById('notif-btn');
+        const mobileTopNotifBtn = document.getElementById('mobile-top-notif-btn');
+        const bottomBarNotifBtn = document.getElementById('bottom-bar-notif-btn');
         const notifDropdown = document.getElementById('notif-dropdown');
         const notifBadge = document.getElementById('notif-badge');
+        const mobileTopNotifBadge = document.getElementById('mobile-top-notif-badge');
+        const bottomBarNotifBadge = document.getElementById('bottom-bar-notif-badge');
         const notifBellIcon = document.getElementById('notif-bell-icon');
+        const mobileNotifBellIcon = document.getElementById('mobile-notif-bell-icon');
+        const bottomBarNotifIcon = document.getElementById('bottom-bar-notif-icon');
         const notifCountPill = document.getElementById('notif-count-pill');
         const notifList = document.getElementById('notif-list');
         const notifUserEmailSpan = document.getElementById('notif-user-email');
@@ -130,6 +280,99 @@
         const notifInputEmail = document.getElementById('notif-input-email');
         const notifSubmitEmail = document.getElementById('notif-submit-email');
         const notifMarkAllBtn = document.getElementById('notif-mark-all-btn');
+        const notifCloseMobileBtn = document.getElementById('notif-close-mobile-btn');
+
+        // Éléments Menu Mobile
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const mobileNavDrawer = document.getElementById('mobile-nav-drawer');
+        const toggleIconBars = document.getElementById('toggle-icon-bars');
+        const toggleIconClose = document.getElementById('toggle-icon-close');
+        const mobileBackdrop = document.getElementById('mobile-backdrop');
+
+        // Détection de l'onglet actif pour la bottom-bar
+        const currentPath = window.location.pathname;
+        if (currentPath === '/' || currentPath === '/catalogue') {
+            const el = document.getElementById('bottom-bar-link-catalogue');
+            if (el) el.classList.add('active');
+        } else if (currentPath.startsWith('/client')) {
+            const el = document.getElementById('bottom-bar-link-client');
+            if (el) el.classList.add('active');
+        } else if (currentPath.startsWith('/admin')) {
+            const el = document.getElementById('bottom-bar-link-admin');
+            if (el) el.classList.add('active');
+        } else if (currentPath.startsWith('/coach/dashboard')) {
+            const el = document.getElementById('bottom-bar-link-coach');
+            if (el) el.classList.add('active');
+        } else if (currentPath.startsWith('/coach/connexion') || currentPath.startsWith('/coach/inscription')) {
+            const el = document.getElementById('bottom-bar-link-pro');
+            if (el) el.classList.add('active');
+        }
+
+        // Fermer tous les menus / tiroirs
+        function closeAllDrawers() {
+            if (notifDropdown) notifDropdown.classList.remove('show');
+            if (mobileNavDrawer) mobileNavDrawer.classList.remove('open');
+            if (mobileBackdrop) mobileBackdrop.classList.remove('show');
+            if (toggleIconBars) toggleIconBars.style.display = 'block';
+            if (toggleIconClose) toggleIconClose.style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }
+
+        // Ouvrir les notifications
+        function openNotifications() {
+            if (mobileNavDrawer) mobileNavDrawer.classList.remove('open');
+            if (toggleIconBars) toggleIconBars.style.display = 'block';
+            if (toggleIconClose) toggleIconClose.style.display = 'none';
+
+            if (notifDropdown) {
+                const isOpen = notifDropdown.classList.contains('show');
+                if (!isOpen) {
+                    notifDropdown.classList.add('show');
+                    if (mobileBackdrop) mobileBackdrop.classList.add('show');
+                    if (window.innerWidth <= 640) document.body.classList.add('modal-open');
+                    loadNotifications();
+                } else {
+                    closeAllDrawers();
+                }
+            }
+        }
+
+        // Toggle Menu Mobile
+        if (mobileMenuToggle) {
+            mobileMenuToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (notifDropdown) notifDropdown.classList.remove('show');
+                
+                const isOpen = mobileNavDrawer && mobileNavDrawer.classList.contains('open');
+                if (!isOpen) {
+                    if (mobileNavDrawer) mobileNavDrawer.classList.add('open');
+                    if (mobileBackdrop) mobileBackdrop.classList.add('show');
+                    if (toggleIconBars) toggleIconBars.style.display = 'none';
+                    if (toggleIconClose) toggleIconClose.style.display = 'block';
+                    document.body.classList.add('modal-open');
+                } else {
+                    closeAllDrawers();
+                }
+            });
+        }
+
+        // Événements boutons notifications
+        if (notifBtn) notifBtn.addEventListener('click', function(e) { e.stopPropagation(); openNotifications(); });
+        if (mobileTopNotifBtn) mobileTopNotifBtn.addEventListener('click', function(e) { e.stopPropagation(); openNotifications(); });
+        if (bottomBarNotifBtn) bottomBarNotifBtn.addEventListener('click', function(e) { e.stopPropagation(); openNotifications(); });
+        if (notifCloseMobileBtn) notifCloseMobileBtn.addEventListener('click', function(e) { e.stopPropagation(); closeAllDrawers(); });
+
+        if (mobileBackdrop) {
+            mobileBackdrop.addEventListener('click', function() {
+                closeAllDrawers();
+            });
+        }
+
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth > 640 && notifDropdown && !notifDropdown.contains(e.target) && (!notifBtn || !notifBtn.contains(e.target))) {
+                notifDropdown.classList.remove('show');
+            }
+        });
 
         function updateEmailDisplay() {
             const email = getActiveEmail();
@@ -178,19 +421,24 @@
                 const unreadCount = data.unreadCount || 0;
                 const notifications = data.notifications || [];
 
-                if (notifBadge) {
+                const updateBadge = function(badgeEl, bellEl) {
+                    if (!badgeEl) return;
                     if (unreadCount > 0) {
-                        notifBadge.style.display = 'flex';
-                        notifBadge.textContent = unreadCount > 9 ? '9+' : unreadCount;
-                        if (notifCountPill) notifCountPill.textContent = unreadCount + ' non lue' + (unreadCount > 1 ? 's' : '');
-                        if (notifBellIcon) notifBellIcon.className = 'fa-solid fa-bell';
-                        if (notifBtn) notifBtn.classList.add('has-unread');
+                        badgeEl.style.display = 'flex';
+                        badgeEl.textContent = unreadCount > 9 ? '9+' : unreadCount;
+                        if (bellEl) bellEl.className = 'fa-solid fa-bell';
                     } else {
-                        notifBadge.style.display = 'none';
-                        if (notifCountPill) notifCountPill.textContent = '0 non lue';
-                        if (notifBellIcon) notifBellIcon.className = 'fa-regular fa-bell';
-                        if (notifBtn) notifBtn.classList.remove('has-unread');
+                        badgeEl.style.display = 'none';
+                        if (bellEl) bellEl.className = 'fa-regular fa-bell';
                     }
+                };
+
+                updateBadge(notifBadge, notifBellIcon);
+                updateBadge(mobileTopNotifBadge, mobileNotifBellIcon);
+                updateBadge(bottomBarNotifBadge, bottomBarNotifIcon);
+
+                if (notifCountPill) {
+                    notifCountPill.textContent = unreadCount + ' non lue' + (unreadCount > 1 ? 's' : '');
                 }
 
                 if (notifList) {
@@ -270,27 +518,6 @@
                 }
             });
         }
-
-        if (notifBtn) {
-            notifBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                if (notifDropdown) {
-                    const isOpen = notifDropdown.classList.contains('show');
-                    if (!isOpen) {
-                        notifDropdown.classList.add('show');
-                        loadNotifications();
-                    } else {
-                        notifDropdown.classList.remove('show');
-                    }
-                }
-            });
-        }
-
-        document.addEventListener('click', function(e) {
-            if (notifDropdown && notifBtn && !notifDropdown.contains(e.target) && !notifBtn.contains(e.target)) {
-                notifDropdown.classList.remove('show');
-            }
-        });
 
         loadNotifications();
         setInterval(loadNotifications, 20000);
