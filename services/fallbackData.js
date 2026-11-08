@@ -395,6 +395,137 @@ module.exports = {
             }
         });
         return true;
+    },
+
+    registerCoach({ nom_complet, email, password, expertise, bio, telephone }) {
+        const cleanEmail = (email || '').trim().toLowerCase();
+        const exists = fallbackUsers.some(u => (u.email || '').toLowerCase() === cleanEmail);
+        if (exists) {
+            return { success: false, error: 'exists' };
+        }
+
+        const nextId = fallbackUsers.reduce((max, u) => Math.max(max, u.id || 0), 0) + 1;
+        const newUser = {
+            id: nextId,
+            nom_complet: (nom_complet || '').trim(),
+            email: cleanEmail,
+            password: password || '',
+            role: 'coach',
+            expertise: (expertise || 'Coaching').trim(),
+            bio: bio ? bio.trim() : '',
+            telephone: telephone ? telephone.trim() : '',
+            subscription_status: 'inactive',
+            subscription_expires_at: null,
+            created_at: new Date()
+        };
+
+        fallbackUsers.push(newUser);
+
+        // Notification interne automatique pour l'administrateur
+        inMemoryNotifications.unshift({
+            id: inMemoryNotifications.length + 301,
+            client_email: 'papeibrahimasane221@gmail.com',
+            titre: `🔔 Nouveau coach inscrit : ${newUser.nom_complet}`,
+            message: `${newUser.nom_complet} (${newUser.email}) vient de créer son compte Coach en spécialité "${newUser.expertise}". Formule inactive par défaut.`,
+            coach_nom: newUser.nom_complet,
+            service_nom: 'Inscription Coach Gratuite',
+            type: 'nouveau_coach',
+            lu: 0,
+            created_at: new Date()
+        });
+
+        return { success: true, user: newUser };
+    },
+
+    findUserByEmail(email) {
+        if (!email) return null;
+        const clean = email.toLowerCase().trim();
+        return fallbackUsers.find(u => (u.email || '').toLowerCase().trim() === clean) || null;
+    },
+
+    findUserById(id) {
+        const numId = Number(id);
+        return fallbackUsers.find(u => u.id === numId) || null;
+    },
+
+    activateSubscription(coachId, { amount = 5000, days = 30, method = 'Wave Business' } = {}) {
+        const coach = this.findUserById(coachId);
+        if (!coach) return false;
+
+        const now = new Date();
+        const baseDate = (coach.subscription_expires_at && new Date(coach.subscription_expires_at) > now)
+            ? new Date(coach.subscription_expires_at)
+            : now;
+        const expiry = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+        coach.subscription_status = 'active';
+        coach.subscription_expires_at = expiry.toISOString().split('T')[0];
+
+        // Notification admin
+        inMemoryNotifications.unshift({
+            id: inMemoryNotifications.length + 401,
+            client_email: 'papeibrahimasane221@gmail.com',
+            titre: `🔔 Nouvel abonnement coach activé (${amount} FCFA)`,
+            message: `Abonnement activé pour ${coach.nom_complet} (${coach.email}) - Formule Mensuelle 30 jours via ${method}.`,
+            coach_nom: coach.nom_complet,
+            service_nom: `Formule Mensuelle Coach • ${amount} FCFA`,
+            type: 'nouvel_abonnement',
+            lu: 0,
+            created_at: new Date()
+        });
+
+        // Notification coach
+        inMemoryNotifications.unshift({
+            id: inMemoryNotifications.length + 402,
+            client_email: coach.email,
+            titre: 'Abonnement CoachFlow activé avec succès ✅',
+            message: `Votre abonnement mensuel (5 000 FCFA) est actif pour 30 jours. Vous pouvez maintenant fixer vos tarifs et publier vos prestations.`,
+            coach_nom: coach.nom_complet,
+            service_nom: 'Formule Mensuelle Coach (5 000 FCFA)',
+            type: 'abonnement_active',
+            lu: 0,
+            created_at: new Date()
+        });
+
+        return coach;
+    },
+
+    deactivateSubscription(coachId) {
+        const coach = this.findUserById(coachId);
+        if (!coach) return false;
+        coach.subscription_status = 'inactive';
+        coach.subscription_expires_at = new Date().toISOString().split('T')[0];
+        return coach;
+    },
+
+    addService(serviceData) {
+        const nextId = fallbackServices.reduce((max, s) => Math.max(max, s.id || 0), 0) + 1;
+        const coach = this.findUserById(serviceData.coach_id) || { nom_complet: 'Coach' };
+        const newService = {
+            id: nextId,
+            nom: serviceData.nom,
+            prix: Number(serviceData.prix),
+            domaine: serviceData.domaine || 'Business',
+            coach_id: serviceData.coach_id,
+            duree_minutes: Number(serviceData.duree_minutes) || 60,
+            description: serviceData.description || '',
+            coach_nom: coach.nom_complet,
+            coach_expertise: coach.expertise || serviceData.domaine,
+            coach_email: coach.email,
+            coach_role: coach.role || 'coach',
+            coach_sub_status: coach.subscription_status || 'active'
+        };
+        fallbackServices.unshift(newService);
+        return newService;
+    },
+
+    deleteService(serviceId, coachId) {
+        const idx = fallbackServices.findIndex(s => s.id == serviceId && (!coachId || s.coach_id == coachId));
+        if (idx !== -1) {
+            fallbackServices.splice(idx, 1);
+            return true;
+        }
+        return false;
     }
 };
 
