@@ -14,6 +14,69 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
+    <!-- ÉCRAN DE DÉMARRAGE NATIVE APP / SPLASH SCREEN (FOND BLANC + LOGO + BARRE LOADING) -->
+    <div id="app-splash-screen" class="app-splash-screen" aria-hidden="true">
+        <div class="splash-content">
+            <div class="splash-logo-wrapper">
+                <div class="splash-brand-icon">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <div class="splash-brand-text">
+                    Coach<span class="splash-brand-highlight">Flow</span>
+                </div>
+            </div>
+            <div class="splash-tagline">Votre plateforme de coaching & formations</div>
+            <div class="splash-loader-track">
+                <div class="splash-loader-bar" id="splash-loader-bar"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function() {
+        const splash = document.getElementById('app-splash-screen');
+        const bar = document.getElementById('splash-loader-bar');
+        if (!splash || !bar) return;
+
+        let progress = 18;
+        bar.style.width = progress + '%';
+
+        const timer = setInterval(function() {
+            if (progress < 85) {
+                progress += Math.floor(Math.random() * 14) + 8;
+                if (progress > 85) progress = 85;
+                bar.style.width = progress + '%';
+            }
+        }, 90);
+
+        function hideSplash() {
+            clearInterval(timer);
+            if (!splash) return;
+            bar.style.width = '100%';
+            setTimeout(function() {
+                splash.classList.add('splash-hidden');
+                setTimeout(function() {
+                    try { splash.remove(); } catch (_) { splash.style.display = 'none'; }
+                }, 450);
+            }, 220);
+        }
+
+        if (document.readyState === 'complete') {
+            setTimeout(hideSplash, 280);
+        } else {
+            window.addEventListener('load', function() {
+                setTimeout(hideSplash, 200);
+            });
+            setTimeout(hideSplash, 850);
+        }
+
+        window.addEventListener('pageshow', function(e) {
+            if (e.persisted && splash) {
+                splash.remove();
+            }
+        });
+    })();
+    </script>
+
     <nav class="navbar">
         <div class="nav-container">
             <a href="/catalogue" class="nav-brand">
