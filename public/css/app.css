@@ -2563,8 +2563,8 @@ tr:hover td {
   background: linear-gradient(90deg, #4361ee, #4cc9f0, #3a0ca3);
   background-size: 200% 100%;
   box-shadow: 0 0 12px rgba(67, 97, 238, 0.6);
-  transition: width 0.35s ease;
-  animation: splashGradientShift 1.5s linear infinite;
+  transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  animation: splashGradientShift 2s linear infinite;
 }
 
 @keyframes splashGradientShift {

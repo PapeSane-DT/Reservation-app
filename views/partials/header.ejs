@@ -37,36 +37,45 @@
         const bar = document.getElementById('splash-loader-bar');
         if (!splash || !bar) return;
 
-        let progress = 18;
+        let progress = 10;
         bar.style.width = progress + '%';
 
+        // Progression rythmée et fluide (vitesse ralentie avec élégance)
+        const startTime = Date.now();
+        const minDisplayTime = 1400; // minimum ~1.4s pour apprécier le démarrage
+
         const timer = setInterval(function() {
-            if (progress < 85) {
-                progress += Math.floor(Math.random() * 14) + 8;
-                if (progress > 85) progress = 85;
+            if (progress < 92) {
+                progress += Math.floor(Math.random() * 8) + 4;
+                if (progress > 92) progress = 92;
                 bar.style.width = progress + '%';
             }
-        }, 90);
+        }, 110);
 
         function hideSplash() {
             clearInterval(timer);
-            if (!splash) return;
-            bar.style.width = '100%';
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, minDisplayTime - elapsed);
+
             setTimeout(function() {
-                splash.classList.add('splash-hidden');
+                bar.style.width = '100%';
                 setTimeout(function() {
-                    try { splash.remove(); } catch (_) { splash.style.display = 'none'; }
-                }, 450);
-            }, 220);
+                    splash.classList.add('splash-hidden');
+                    setTimeout(function() {
+                        try { splash.remove(); } catch (_) { splash.style.display = 'none'; }
+                    }, 500);
+                }, 320); // court instant pour voir la barre à 100%
+            }, remaining);
         }
 
         if (document.readyState === 'complete') {
-            setTimeout(hideSplash, 280);
+            hideSplash();
         } else {
             window.addEventListener('load', function() {
-                setTimeout(hideSplash, 200);
+                hideSplash();
             });
-            setTimeout(hideSplash, 850);
+            // Sécurité absolue (max 2.2s si connexion lente)
+            setTimeout(hideSplash, 2200);
         }
 
         window.addEventListener('pageshow', function(e) {
